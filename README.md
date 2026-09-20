@@ -42,7 +42,7 @@ of the time. **The pad always wins while held**, and never moves the parameter:
 | Style: Finger / Pick / Slap | D2 / E2 / F2 | `style` (enum) | selects that style; release returns to the enum |
 | Mute | C2 | `mute` | inverts it — a latched Mute lifts for one note |
 | Legato | F#2, or CC 68 | `legato` | inverts it |
-| Ring / Gate | G2 | `let_ring` | inverts it |
+| Ring / Gate | G2 | — | rings the string out while held |
 | Slide down | C#2 | — | momentary only |
 | Slide up | D#2 | — | momentary only |
 
@@ -98,7 +98,7 @@ wrapper's addition; upstream's DSP has no use for it.
 |---|---|
 | root | Pickup Pos, Brightness, Strike Hard, Thump, Tone, Sustain, Ring, Volume + preset browser |
 | String | the six above, plus Ring |
-| Articulation | Style (Off/Finger/Pick/Slap), Mute, Legato, Ring/Gate |
+| Articulation | Style (Off/Finger/Pick/Slap), Mute, Legato |
 | EQ | 100 Hz shelf, 250 / 500 / 1.5 k peaks, 3 kHz shelf (±12 dB) |
 | Mix | Volume, Pan, Saturation |
 | MIDI | Fine Tune, Bend Range, AT Range, Vel Sens |
@@ -117,8 +117,11 @@ undamped so it decays at its own sustain. The interpolation is done on the
 of magnitude apart in decay time and a linear knob would do nothing for its
 first 80%.
 
-**Ring/Gate** (`let_ring`, G2) overrides the knob while engaged — a let-ring
-gesture, the way a sustain pedal is, rather than another value to dial in.
+**Ring/Gate** is the G2 pad, and only the pad — a let-ring gesture, the way a
+sustain pedal is. It deliberately has no latched parameter: measured, a latch
+was worth exactly "Ring = 100" and nothing else (with the knob at 100 it
+changed the release tail by nothing at all), so a second control for the same
+value would only have been a second place to look.
 
 Both are marked `SCHWUNG PORT ADDITION` in `params.lib` and `bass.dsp`; they are
 the only edits to Punk Labs' DSP sources.

@@ -185,7 +185,6 @@ static const param_def_t PARAMS[] = {
     {"style",    "Style",       NULL,                  K_STYLE,  0,     3,   0, NULL},
     {"mute",     "Mute",        "Articulation_Mute",   K_TOGGLE, 0, 1, 0, NULL},
     {"legato",   "Legato",      "Articulation_Legato", K_TOGGLE, 0, 1, 0, NULL},
-    {"let_ring", "Ring/Gate",   "Articulation_Ring",   K_TOGGLE, 0, 1, 0, NULL},
 };
 #define CHONK_PARAM_COUNT ((int)(sizeof(PARAMS) / sizeof(PARAMS[0])))
 
@@ -197,8 +196,8 @@ static const param_def_t *find_param(const char *key) {
 
 /* The latched on/off articulations. Style is not among them: it is one enum,
  * and its keyswitches write that enum instead (see style_from_key). */
-enum { A_MUTE, A_LEGATO, A_LET_RING, A_COUNT };
-static const char *kArticKey[A_COUNT] = {"mute", "legato", "let_ring"};
+enum { A_MUTE, A_LEGATO, A_COUNT };
+static const char *kArticKey[A_COUNT] = {"mute", "legato"};
 
 /* ======================================================================== *
  *  Instance
@@ -219,7 +218,7 @@ typedef struct {
     /* voice inputs (bass.dsp) */
     FAUSTFLOAT *z_gate, *z_gain, *z_key, *z_freq, *z_trigger, *z_wake;
     FAUSTFLOAT *z_pitchwheel, *z_modwheel, *z_aftertouch, *z_transpose;
-    FAUSTFLOAT *z_slide_up, *z_slide_down;
+    FAUSTFLOAT *z_slide_up, *z_slide_down, *z_let_ring;
     FAUSTFLOAT *z_out_wake, *z_out_modwheel;
 
     uint8_t held[CHONK_MAX_HELD];   /* note stack, oldest first */
@@ -378,6 +377,7 @@ static void all_notes_off(chonk_t *inst) {
     voice_gate_off(inst);
     if (inst->z_slide_up) *inst->z_slide_up = 0.0f;
     if (inst->z_slide_down) *inst->z_slide_down = 0.0f;
+    if (inst->z_let_ring) *inst->z_let_ring = 0.0f;
     for (int a = 0; a < A_COUNT; a++) { inst->artic_key[a] = 0; apply_artic(inst, a); }
     inst->style_key = -1;
     apply_style(inst);
@@ -425,8 +425,8 @@ static const char *kUiHierarchy =
    "]},"
  "\"string\":{\"name\":\"String\",\"knobs\":[\"pickup\",\"bright\",\"strike\",\"thump\",\"tone\",\"sustain\",\"ring\"],"
    "\"params\":[\"pickup\",\"bright\",\"strike\",\"thump\",\"tone\",\"sustain\",\"ring\"]},"
- "\"artic\":{\"name\":\"Articulation\",\"knobs\":[\"style\",\"mute\",\"legato\",\"let_ring\"],"
-   "\"params\":[\"style\",\"mute\",\"legato\",\"let_ring\"]},"
+ "\"artic\":{\"name\":\"Articulation\",\"knobs\":[\"style\",\"mute\",\"legato\"],"
+   "\"params\":[\"style\",\"mute\",\"legato\"]},"
  "\"eq\":{\"name\":\"EQ\",\"knobs\":[\"eq1\",\"eq2\",\"eq3\",\"eq4\",\"eq5\"],"
    "\"params\":[\"eq1\",\"eq2\",\"eq3\",\"eq4\",\"eq5\"]},"
  "\"mix\":{\"name\":\"Mix\",\"knobs\":[\"gain\",\"pan\",\"sat\"],"
@@ -527,6 +527,7 @@ static void resolve_zones(chonk_t *inst) {
     inst->z_style[STYLE_FINGER] = inst->bass_zones.find("Articulation_Finger");
     inst->z_style[STYLE_PICK]   = inst->bass_zones.find("Articulation_Pick");
     inst->z_style[STYLE_SLAP]   = inst->bass_zones.find("Articulation_Slap");
+    inst->z_let_ring   = inst->bass_zones.find("Articulation_Ring");
     inst->z_slide_up   = inst->bass_zones.find("Articulation_SlideUp");
     inst->z_slide_down = inst->bass_zones.find("Articulation_SlideDown");
     inst->z_out_wake     = inst->out_zones.find("WakeUp");
@@ -623,7 +624,12 @@ static void v2_on_midi(void *instance, const uint8_t *msg, int len, int source) 
                     break;
                 case KS_MUTE:   inst->artic_key[A_MUTE]     = on; apply_artic(inst, A_MUTE);     break;
                 case KS_LEGATO: inst->artic_key[A_LEGATO]   = on; apply_artic(inst, A_LEGATO);   break;
-                case KS_RING:   inst->artic_key[A_LET_RING] = on; apply_artic(inst, A_LET_RING); break;
+                /* Momentary full ring. There is no latched counterpart: the
+                 * Ring knob at 100 IS that latch (measured — with the knob up,
+                 * a latched toggle changed the release tail by nothing), so a
+                 * second control for the same value would only be a second
+                 * place to look. */
+                case KS_RING:   if (inst->z_let_ring) *inst->z_let_ring = on ? 1.0f : 0.0f; break;
                 /* A style keyswitch selects while held; releasing it hands the
                  * string back to whatever the Style enum says. Releasing a pad
                  * that is not the one currently held (a roll across three of

@@ -148,12 +148,9 @@ int main(void) {
 
     /* Articulation state is performance state: a preset leaves it alone. */
     api->set_param(inst, "style", "Slap");
-    api->set_param(inst, "let_ring", "1");
     api->set_param(inst, "preset", "5");
     ok(get(api, inst, "style") == "3", "a preset does not clear the playing style");
-    ok(get(api, inst, "let_ring") == "1", "nor the Ring/Gate latch");
     api->set_param(inst, "style", "Off");
-    api->set_param(inst, "let_ring", "0");
 
     /* ---- Style is ONE choice: the three Faust buttons are mutually exclusive.
      * params.lib folds them with max(), so two at once is a state the model
@@ -193,9 +190,14 @@ int main(void) {
     FAUSTFLOAT *zlet = c->bass_zones.find("Articulation_Ring");
     ok(zlet != NULL, "the Ring/Gate zone resolves");
     note_on(api, inst, KS_RING, 100);
-    ok(*zlet >= 0.5f, "the G2 keyswitch engages Ring/Gate");
+    ok(*zlet >= 0.5f, "the G2 keyswitch rings the string out while held");
     note_off(api, inst, KS_RING);
     ok(*zlet < 0.5f, "and releases it");
+    /* It is a PAD, not a latch: there is no parameter of that name, because
+     * the Ring knob at 100 is the same value. */
+    ok(find_param("let_ring") == NULL, "no latched Ring/Gate parameter exists");
+    ok(api->get_param(inst, "let_ring", (char *)alloca(64), 64) < 0,
+       "and asking for one returns negative");
     api->set_param(inst, "ring", "0");
 
     /* A released note must ring measurably longer with Ring up. Same note,
