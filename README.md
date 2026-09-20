@@ -35,22 +35,30 @@ above it the model goes unstable, so upstream clamps it and so do we. Notes
 outside the window are ignored rather than folded in.
 
 **Articulations** work two ways — a pad while you hold it, a parameter the rest
-of the time:
+of the time. **The pad always wins while held**, and never moves the parameter:
 
-| | keyswitch | parameter | how the two combine |
+| | keyswitch | parameter | held pad does |
 |---|---|---|---|
-| Style: Finger / Pick / Slap | D2 / E2 / F2 | `style` (enum) | the held pad wins; releasing it returns to the enum |
-| Mute | C2 | `mute` | on if **either** says so |
-| Legato | F#2, or CC 68 | `legato` | on if either says so |
-| Ring / Gate | G2 | `let_ring` | on if either says so |
+| Style: Finger / Pick / Slap | D2 / E2 / F2 | `style` (enum) | selects that style; release returns to the enum |
+| Mute | C2 | `mute` | inverts it — a latched Mute lifts for one note |
+| Legato | F#2, or CC 68 | `legato` | inverts it |
+| Ring / Gate | G2 | `let_ring` | inverts it |
 | Slide down | C#2 | — | momentary only |
 | Slide up | D#2 | — | momentary only |
 
-**Finger, Pick and Slap are one choice, not three switches.** `params.lib` folds
-them with `max()` — `articulationStyleAmount = max(finger, pick, slap)` — so
-holding two just means the harder one wins and the other is inaudible. Three
-toggles would have offered a state the model cannot represent, so they are one
-enum.
+The toggles invert rather than OR so the pad means something in both
+directions: OR-ing made the pad a no-op whenever the latch was on, and there
+was no way to play one open note with Mute latched.
+
+**Finger, Pick and Slap are one choice, not three switches**, and the choice is
+narrower than it looks. `articulationStyleAmount` appears exactly once in the
+whole DSP (`bass.dsp:122`): a style does nothing but override the Strike
+Hardness knob with a fixed value — Finger 0, Pick 0.5, Slap 1.0 — because
+`articulationStyleHardness = max(pick * 1/2, slap)` collapses the buttons to a
+single number. Measured over all 8 button combinations at three knob settings,
+they produce **3 distinct sounds**; with Strike Hardness at 100, "Off" is
+bit-identical to Slap. So the enum reaches every state the model has, and the
+five extra toggle combinations were duplicates.
 
 The keyswitch octave moves with the module's octave shift, because on Move these
 are pads on the same grid and a fixed C2 row would walk off the bottom of it.

@@ -98,9 +98,13 @@ int main(void) {
     ok(*zmute < 0.5f, "releasing it turns Mute off");
     api->set_param(inst, "mute", "1");
     ok(*zmute >= 0.5f, "the latched param turns Mute on");
+    /* The pad OVERRIDES the latch rather than adding to it: with Mute latched,
+     * holding the pad lifts it for one note. */
     note_on(api, inst, KS_MUTE, 100);
+    ok(*zmute < 0.5f, "holding the pad lifts a latched Mute");
     note_off(api, inst, KS_MUTE);
-    ok(*zmute >= 0.5f, "a keyswitch press does not clear the latch");
+    ok(*zmute >= 0.5f, "releasing it restores the latch");
+    ok(get(api, inst, "mute") == "1", "and the latch parameter itself never moved");
     api->set_param(inst, "mute", "0");
     ok(*zmute < 0.5f, "clearing the latch turns it off");
 

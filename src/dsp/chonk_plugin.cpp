@@ -248,15 +248,26 @@ static void write_zone(chonk_t *inst, int i, float display) {
     if (inst->zone_out[i])  *inst->zone_out[i]  = (FAUSTFLOAT)display;
 }
 
-/* A Faust articulation button is on when EITHER the latched parameter or the
- * held keyswitch says so. Upstream only had the keyswitch; the latch is this
- * port's addition, for a device whose pads are also its keyboard. */
+/* A held keyswitch OVERRIDES its latched parameter — it does not merely add to
+ * it. Upstream only had the keyswitch; the latch is this port's addition, for a
+ * device whose pads are also its keyboard, and OR-ing the two made the pad a
+ * no-op whenever the latch was on: with Mute latched there was no way to play
+ * one open note. Inverting instead makes the pad meaningful in both directions
+ * and keeps the old behaviour intact wherever the latch is off:
+ *
+ *     latch off + pad held -> on   (unchanged)
+ *     latch on  + pad held -> off  (the pad lifts it for as long as you hold)
+ *
+ * This matches what the Style keyswitches already do to the Style enum, so
+ * every articulation pad now means the same thing: while I am held, I am the
+ * one deciding. */
 static void apply_artic(chonk_t *inst, int a) {
     const param_def_t *p = find_param(kArticKey[a]);
     if (!p) return;
     int idx = (int)(p - PARAMS);
-    float on = (inst->value[idx] >= 0.5f || inst->artic_key[a]) ? 1.0f : 0.0f;
-    write_zone(inst, idx, on);
+    int latched = (inst->value[idx] >= 0.5f);
+    int on = inst->artic_key[a] ? !latched : latched;
+    write_zone(inst, idx, on ? 1.0f : 0.0f);
 }
 
 /* One of the three style buttons is up, the rest are down. A held keyswitch
