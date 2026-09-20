@@ -97,7 +97,7 @@ bass = result with {
     // articulationFrets defaults ON and glideTerm = max(legato, glide), so
     // every combination that existed before behaves as it did.
     quantizeFrets = _ <: it.interpolate_linear(articulationFrets, _, ot.quantizeFrets);
-    stringSlide = ot.smoothT60_WithoutWake(glideTerm*35/1000) : +(slideKey) : quantizeFrets;
+    stringSlide = ot.smoothT60_WithoutWake(glideTerm*glideTime) : +(slideKey) : quantizeFrets;
     // stringSlide = ba.line(articulationLegato * 80/1000*ma.SR) : quantizeFrets;
     stringNote = key : stringSlide : +(shift) : clampNote : ot.smoothWaveguide; 
     stringFreq = ba.midikey2hz(stringNote) * fineTune; // Smooth prevents accidental pops/brightness

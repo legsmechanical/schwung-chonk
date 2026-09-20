@@ -53,7 +53,7 @@ Ring · Volume**, with the preset browser on the same page.
 | Page | |
 |---|---|
 | **String** | Pickup Pos, Brightness, Strike Hard, Thump, Tone, Sustain, Ring |
-| **Articulation** | Style, Mute, Legato, Glide, Frets, Retrigger |
+| **Articulation** | Style, Mute, Legato, Glide, Glide Time, Frets, Retrigger |
 | **EQ** | 100 Hz shelf · 250 / 500 / 1.5 k peaks · 3 kHz shelf, ±12 dB |
 | **Mix** | Volume, Pan, Saturation |
 | **MIDI** | Fine Tune, Bend Range, AT Range, Vel Sens |
@@ -77,12 +77,14 @@ thump. While it is on the Thump knob is out of circuit.
 stepping through frets, and takes the click and the finger out of the output.
 The note-to-note handover happens with Legato off as well.
 
-**Glide** and **Frets** are the first two of those broken out. Glide slides
-between held notes over 35 ms while *keeping* the click; Legato still implies
+**Glide**, **Glide Time** and **Frets** are the first two of those broken out.
+Glide slides between held notes while *keeping* the click, over **Glide Time**
+— 0–500 ms, higher is slower, defaulting to upstream's fixed 35 ms; Legato still implies
 glide, so Legato alone sounds exactly as it always has. Frets sets the path a
 glide takes — on, it walks up the frets; off, it slides smoothly past them —
-and defaults on, which is how upstream always played. Both only matter when one
-note is held into the next.
+and defaults on, which is how upstream always played. All three only matter
+when one note is held into the next; with Glide and Legato both off, Glide Time
+does nothing at all, because the DSP multiplies it by `glideTerm`.
 
 **Retrigger** decides what an overlapping note does. Off (the original): a
 second note at the *same* velocity re-pitches the ringing string without
@@ -158,8 +160,9 @@ magnitude apart in decay time and a linear knob would do nothing for its first
 The second splits **Glide** and **Frets** out of Legato. Upstream welded three
 behaviours together: `stringSlide` glided only under `articulationLegato`, and
 `quantizeFrets` fretted only under Legato or an active slide pad. They are now
-their own switches, with `glideTerm = max(legato, glide)` and `articulationFrets`
-defaulting on, so every combination that existed before behaves as it did.
+their own controls, with `glideTerm = max(legato, glide)`, `articulationFrets`
+defaulting on, and the hard-coded 35 ms replaced by a `glideTime` slider that
+defaults to 35 — so every combination that existed before behaves as it did.
 
 **Retrigger** needed no DSP change but is not a flag either: Faust fires the
 pluck on a *rising edge* of `Trigger`, which a block-rate host cannot

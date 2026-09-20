@@ -191,6 +191,11 @@ static const param_def_t PARAMS[] = {
      * the click. Frets defaults ON, which is upstream's behaviour for every
      * case that existed before the switch. */
     {"glide",    "Glide",       "Articulation_Glide",  K_TOGGLE, 0, 1, 0, NULL},
+    /* Upstream's glide was a hard-coded 35 ms T60; that is the default here,
+     * so an untouched patch glides as it always did. Higher = slower. The DSP
+     * multiplies this by glideTerm, so with Glide and Legato both off the
+     * pitch jumps whatever this says. */
+    {"glide_ms", "Glide Time",  "Glide_Time",          K_NUM,    0,   500,  35, "ms"},
     {"frets",    "Frets",       "Articulation_Frets",  K_TOGGLE, 0, 1, 1, NULL},
     /* Wrapper-side: nothing in the DSP to write, it changes how Trigger is
      * driven. See voice_note_on and v2_render_block. */
@@ -468,8 +473,8 @@ static const char *kUiHierarchy =
    "]},"
  "\"string\":{\"name\":\"String\",\"knobs\":[\"pickup\",\"bright\",\"strike\",\"thump\",\"tone\",\"sustain\",\"ring\"],"
    "\"params\":[\"pickup\",\"bright\",\"strike\",\"thump\",\"tone\",\"sustain\",\"ring\"]},"
- "\"artic\":{\"name\":\"Articulation\",\"knobs\":[\"style\",\"mute\",\"legato\",\"glide\",\"frets\",\"retrig\"],"
-   "\"params\":[\"style\",\"mute\",\"legato\",\"glide\",\"frets\",\"retrig\"]},"
+ "\"artic\":{\"name\":\"Articulation\",\"knobs\":[\"style\",\"mute\",\"legato\",\"glide\",\"glide_ms\",\"frets\",\"retrig\"],"
+   "\"params\":[\"style\",\"mute\",\"legato\",\"glide\",\"glide_ms\",\"frets\",\"retrig\"]},"
  "\"eq\":{\"name\":\"EQ\",\"knobs\":[\"eq1\",\"eq2\",\"eq3\",\"eq4\",\"eq5\"],"
    "\"params\":[\"eq1\",\"eq2\",\"eq3\",\"eq4\",\"eq5\"]},"
  "\"mix\":{\"name\":\"Mix\",\"knobs\":[\"gain\",\"pan\",\"sat\"],"

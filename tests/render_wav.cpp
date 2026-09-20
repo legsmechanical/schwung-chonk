@@ -152,6 +152,19 @@ int main(int argc, char **argv) {
     }
     set("glide", "0"); set("frets", "1"); set("legato", "0");
 
+    /* 10 — Glide Time: the same note change at four speeds. */
+    say("10. glide time 10 / 35 / 150 / 400 ms");
+    set("glide", "1");
+    const char *times[] = {"10", "35", "150", "400"};
+    for (int i = 0; i < 4; i++) {
+        set("glide_ms", times[i]);
+        midi3(0x90, 48, 100); render_ms(400);
+        midi3(0x90, 55, 100); render_ms(700);
+        midi3(0x80, 55, 0);   render_ms(200);
+        midi3(0x80, 48, 0);   render_ms(500);
+    }
+    set("glide", "0"); set("glide_ms", "35");
+
     double cpu = (double)(clock() - t0) / CLOCKS_PER_SEC;
     double audio = g_pcm.size() / 2.0 / MOVE_SAMPLE_RATE;
     printf("rendered %.1f s of audio in %.2f s  (%.0fx realtime, workstation)\n",

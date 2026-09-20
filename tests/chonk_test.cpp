@@ -286,6 +286,36 @@ int main(void) {
         double d_frets = diff(fret_on, fret_off);
         printf("        glided change, mean sample diff: frets %.1f\n", d_frets);
         ok(d_frets > 10.0, "Frets changes the path of a glide");
+
+        /* Glide Time: the same glide, taken slowly, must differ from the
+         * default 35 ms — and with Glide OFF the time must do nothing at all,
+         * because the DSP multiplies it by glideTerm. */
+        auto render_glide = [&](const char *glide, const char *ms, std::vector<int16_t> &out) {
+            void *t = api->create_instance(NULL, NULL);
+            api->set_param(t, "glide", glide);
+            api->set_param(t, "glide_ms", ms);
+            note_on(api, t, 48, 100);
+            int16_t buf[256];
+            for (int b = 0; b < 140; b++) api->render_block(t, buf, 128);
+            note_on(api, t, 55, 100);
+            out.clear();
+            for (int b = 0; b < 60; b++) {
+                api->render_block(t, buf, 128);
+                out.insert(out.end(), buf, buf + 256);
+            }
+            api->destroy_instance(t);
+        };
+        std::vector<int16_t> fast, slow, jump_a, jump_b;
+        render_glide("1", "35", fast);
+        render_glide("1", "400", slow);
+        render_glide("0", "35", jump_a);
+        render_glide("0", "400", jump_b);
+        double d_time = diff(fast, slow), d_off = diff(jump_a, jump_b);
+        printf("        glide time 35 vs 400 ms: %.1f (glide on), %.1f (glide off)\n",
+               d_time, d_off);
+        ok(d_time > 10.0, "Glide Time changes how long the glide takes");
+        ok(d_off == 0.0, "and does nothing at all with Glide off");
+        ok(find_param("glide_ms")->def == 35.0f, "Glide Time defaults to upstream's 35 ms");
     }
 
     /* ---- Retrigger ----

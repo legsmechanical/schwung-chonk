@@ -81,6 +81,12 @@ articulationRing = button("Articulation_Ring") : ot.smoothParamFast;
 articulationGlide = button("Articulation_Glide") : ot.smoothParamFast;
 glideTerm = max(articulationLegato, articulationGlide);
 
+// How long the glide takes, as a T60. Upstream hard-coded 35 ms, which is the
+// default here, so an untouched patch glides exactly as it always did. The
+// time is multiplied by glideTerm in bass.dsp, so with neither Glide nor
+// Legato engaged the time is 0 and the pitch jumps, whatever this says.
+glideTime = hslider("[280]Glide_Time[group:Bass][export:Glide Time][unit:ms]", 35, 0, 500, 0.1) / 1000;
+
 // Frets decides whether a glide walks up the frets or slides smoothly past
 // them. Upstream fretted whenever Legato or a slide pad was active; this
 // switch defaults ON, which is that same behaviour for every case that
