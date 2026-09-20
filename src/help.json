@@ -65,6 +65,7 @@
             "F2   Slap",
             "F#2  Legato",
             "G2   Ring",
+            "G#2  Alt Pick",
             "",
             "They move with the",
             "octave shift, so the",
@@ -306,6 +307,42 @@
             "Off is the original,",
             "and usually the",
             "better feel."
+          ]
+        },
+        {
+          "title": "Alt Pick",
+          "lines": [
+            "Alternate picking:",
+            "down, up, down, up",
+            "as you play, instead",
+            "of every note being",
+            "a downstroke.",
+            "",
+            "Down and up differ",
+            "three ways. The pick",
+            "pushes the string the",
+            "other way (which is",
+            "what you hear against",
+            "a ringing string),",
+            "the upstroke carries",
+            "a little less energy,",
+            "and its click is",
+            "thinner and shorter.",
+            "",
+            "A phrase starts on a",
+            "downstroke. The count",
+            "restarts after a",
+            "PAUSE of about 0.4 s,",
+            "not when you let a",
+            "note go - picking is",
+            "separate notes, so",
+            "releasing must not",
+            "reset it.",
+            "",
+            "Pad G#2. Not in the",
+            "original - the sizes",
+            "are a guess and can",
+            "be retuned."
           ]
         }
       ]

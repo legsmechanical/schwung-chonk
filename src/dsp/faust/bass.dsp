@@ -83,7 +83,8 @@ bass = result with {
     
     //stringFilter = seq(i, 2, pm.bridgeFilter(stringBrightness * 0.5, 0));
     //stringFilter = fi.svf.lp(stringCutoff*1.27201964951, 0.57735026919);
-    transientFilter = fi.highpass(1, 300) : fi.lowpass(1, 3750);
+    // SCHWUNG PORT ADDITION: the corners move with the pick direction.
+    transientFilter = fi.highpass(1, pickClickHP) : fi.lowpass(1, pickClickLP);
     bridgeFilter = stringFilter;
     nutFilter = stringFilter;
     toneFilter = fi.lowpass(1, toneKnob); // Passive bass: 1st order LPF
@@ -118,7 +119,11 @@ bass = result with {
     fingerTravel = it.interpolate_linear(fingerTravel01, 0.2, 1.0);// * it.interpolate_linear(stringNote01, 1, 0.4); //String moves less at higher frequencies
 
     //fingerEnergy = ot.ar(it.interpolate_linear(pickSpeed, 1.5, 0.2)/1000, 20/1000, trigger) * fingerTravel : ot.filterTriggerClicks(trigger) : /(4);
-    fingerEnergy = ot.stringPluck(stringFreq, fingerTravel/3, trigger);
+    // SCHWUNG PORT ADDITION: pickEnergy trims the upstroke, pickSign sets which
+    // way the string is pushed. Only the PLUCK is trimmed -- fingerTravel is
+    // also the energy budget strikePickup meters against, and trimming that
+    // would quietly change how hard the string can be driven at all.
+    fingerEnergy = ot.stringPluck(stringFreq, fingerTravel*pickEnergy/3, trigger) * pickSign;
 
     // TODO: Come up with a nicer exciter...
     // fingerEnergy = ot.ar(it.interpolate_linear(pickSpeed, 0.15, 0.02)/stringFreq, 1/stringFreq*4, trigger) * os.osc(stringFreq) * 0.25;
@@ -126,8 +131,8 @@ bass = result with {
 
     clickVolume = pow(pickSpeed, 1.5);
     strikeHardnessAdjusted = it.interpolate_linear(articulationStyleAmount, strikeHardness, articulationStyleHardness) * clickVolume;
-    transientEnv = ot.ar(0.2/1000, it.interpolate_linear(strikeHardnessAdjusted, 2, 8)/1000, trigger) * strikeHardnessAdjusted * 1.0;
-    transientEnergy = ot.noise * transientEnv : transientFilter;
+    transientEnv = ot.ar(0.2/1000, it.interpolate_linear(strikeHardnessAdjusted, 2, 8)/1000*pickClickDecay, trigger) * strikeHardnessAdjusted * 1.0;
+    transientEnergy = ot.noise * transientEnv : transientFilter : *(pickSign);
 
     bounce(efficiency, signal) = result with {
         // TODO: Nonlinear efficiency?

@@ -165,6 +165,18 @@ int main(int argc, char **argv) {
     }
     set("glide", "0"); set("glide_ms", "35");
 
+    /* 11 — Alternate picking: the same eight-note line, all downstrokes then
+     *      alternating. Pick style, so the click is in play. */
+    say("11. eight-note line: all downstrokes, then alternate picking");
+    set("style", "Pick");
+    int line[8] = {48, 48, 55, 48, 50, 50, 57, 50};
+    for (int k = 0; k < 2; k++) {
+        set("altpick", k ? "1" : "0");
+        for (int i = 0; i < 8; i++) play(line[i], 100, 180, 30);
+        render_ms(600);
+    }
+    set("altpick", "0"); set("style", "Off");
+
     double cpu = (double)(clock() - t0) / CLOCKS_PER_SEC;
     double audio = g_pcm.size() / 2.0 / MOVE_SAMPLE_RATE;
     printf("rendered %.1f s of audio in %.2f s  (%.0fx realtime, workstation)\n",

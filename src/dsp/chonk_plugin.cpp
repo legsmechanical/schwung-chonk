@@ -103,6 +103,7 @@ static const host_api_v1_t *g_host = NULL;
 #define KS_SLAP       41    /* F2  */
 #define KS_LEGATO     42    /* F#2 */
 #define KS_RING       43    /* G2  — this port's Ring/Gate, next pad up */
+#define KS_ALTPICK    44    /* G#2 — this port's Alternate Picking */
 
 #define CHONK_MAX_HELD 32
 
@@ -197,6 +198,9 @@ static const param_def_t PARAMS[] = {
      * pitch jumps whatever this says. */
     {"glide_ms", "Glide Time",  "Glide_Time",          K_NUM,    0,   500,  35, "ms"},
     {"frets",    "Frets",       "Articulation_Frets",  K_TOGGLE, 0, 1, 1, NULL},
+    /* Wrapper-side: there is no zone to hold it. What reaches the DSP is
+     * Pick_Up, one stroke at a time, from voice_note_on. */
+    {"altpick",  "Alt Pick",    NULL,                  K_TOGGLE, 0, 1, 0, NULL},
     /* Wrapper-side: nothing in the DSP to write, it changes how Trigger is
      * driven. See voice_note_on and v2_render_block. */
     {"retrig",   "Retrigger",   NULL,                  K_TOGGLE, 0, 1, 0, NULL},
@@ -211,8 +215,8 @@ static const param_def_t *find_param(const char *key) {
 
 /* The latched on/off articulations. Style is not among them: it is one enum,
  * and its keyswitches write that enum instead (see style_from_key). */
-enum { A_MUTE, A_LEGATO, A_COUNT };
-static const char *kArticKey[A_COUNT] = {"mute", "legato"};
+enum { A_MUTE, A_LEGATO, A_ALTPICK, A_COUNT };
+static const char *kArticKey[A_COUNT] = {"mute", "legato", "altpick"};
 
 /* ======================================================================== *
  *  Instance
@@ -246,6 +250,9 @@ typedef struct {
     int     artic_key[A_COUNT];     /* held keyswitch */
     int     style_key;              /* style keyswitch held, or -1 */
     float   pending_trigger;        /* velocity waiting for a forced edge, or -1 */
+    int     next_up;                /* 1 if the NEXT stroke is an upstroke */
+    int     idle_frames;            /* rendered frames since the last note-on */
+    FAUSTFLOAT *z_pick_up;
     FAUSTFLOAT *z_style[STYLE_COUNT];  /* NULL, finger, pick, slap */
     int     octave_transpose;
     int     cur_preset;             /* index into CHONK_FACTORY, -1 = Init */
@@ -338,6 +345,32 @@ static void voice_note_change(chonk_t *inst, float note) {
     if (inst->z_freq) *inst->z_freq = (FAUSTFLOAT)note_to_freq(note);
 }
 
+/* Alternate picking is on if the latch says so, or the pad is held and it does
+ * not — the same invert every articulation pad does. */
+static int altpick_on(const chonk_t *inst) {
+    const param_def_t *p = find_param("altpick");
+    if (!p) return 0;
+    int latched = (inst->value[(int)(p - PARAMS)] >= 0.5f);
+    return inst->artic_key[A_ALTPICK] ? !latched : latched;
+}
+
+/* Which way the pick is travelling for THIS note. A phrase starts on a
+ * downstroke, and the count restarts after a PAUSE (kAltPickResetMs of no new
+ * note) rather than whenever the string falls silent.
+ *
+ * ⚠ That distinction is the whole feature. Picking is normally separate notes
+ * — press, release, press — so resetting on release, which is what this did
+ * first, made every note a downstroke and alternation did nothing at all
+ * except under a held legato line. The demo render is what caught it. */
+#define kAltPickResetMs 400
+
+static void advance_pick(chonk_t *inst) {
+    inst->idle_frames = 0;
+    int up = altpick_on(inst) ? inst->next_up : 0;
+    if (inst->z_pick_up) *inst->z_pick_up = (FAUSTFLOAT)up;
+    inst->next_up = altpick_on(inst) ? !up : 0;
+}
+
 static int retrig_on(const chonk_t *inst) {
     const param_def_t *p = find_param("retrig");
     return p && inst->value[(int)(p - PARAMS)] >= 0.5f;
@@ -346,6 +379,10 @@ static int retrig_on(const chonk_t *inst) {
 static void voice_note_on(chonk_t *inst, float note, float velocity) {
     inst->gate_count++;
     voice_wake(inst);
+    /* Before the trigger: Pick_Up is not smoothed, so it has to be right at
+     * the edge rather than ramping into it. One stroke per note-on, whether or
+     * not Faust's edge detector ends up plucking — the pick moved either way. */
+    advance_pick(inst);
     /*
      * Faust edge-detects this: triggerAndVelocity fires only while
      * Trigger > Trigger'. Writing the same velocity twice between blocks is
@@ -418,6 +455,9 @@ static void mono_note_off(chonk_t *inst, uint8_t note) {
 
 static void all_notes_off(chonk_t *inst) {
     inst->pending_trigger = -1.0f;
+    inst->next_up = 0;
+    inst->idle_frames = 0;
+    if (inst->z_pick_up) *inst->z_pick_up = 0.0f;
     inst->held_count = 0;
     inst->sustained_count = 0;
     inst->gate_count = 0;
@@ -427,7 +467,6 @@ static void all_notes_off(chonk_t *inst) {
     if (inst->z_let_ring) *inst->z_let_ring = 0.0f;
     for (int a = 0; a < A_COUNT; a++) { inst->artic_key[a] = 0; apply_artic(inst, a); }
     inst->style_key = -1;
-    inst->pending_trigger = -1.0f;
     apply_style(inst);
 }
 
@@ -473,8 +512,8 @@ static const char *kUiHierarchy =
    "]},"
  "\"string\":{\"name\":\"String\",\"knobs\":[\"pickup\",\"bright\",\"strike\",\"thump\",\"tone\",\"sustain\",\"ring\"],"
    "\"params\":[\"pickup\",\"bright\",\"strike\",\"thump\",\"tone\",\"sustain\",\"ring\"]},"
- "\"artic\":{\"name\":\"Articulation\",\"knobs\":[\"style\",\"mute\",\"legato\",\"glide\",\"glide_ms\",\"frets\",\"retrig\"],"
-   "\"params\":[\"style\",\"mute\",\"legato\",\"glide\",\"glide_ms\",\"frets\",\"retrig\"]},"
+ "\"artic\":{\"name\":\"Articulation\",\"knobs\":[\"style\",\"mute\",\"legato\",\"glide\",\"glide_ms\",\"frets\",\"altpick\"],"
+   "\"params\":[\"style\",\"mute\",\"legato\",\"glide\",\"glide_ms\",\"frets\",\"altpick\",\"retrig\"]},"
  "\"eq\":{\"name\":\"EQ\",\"knobs\":[\"eq1\",\"eq2\",\"eq3\",\"eq4\",\"eq5\"],"
    "\"params\":[\"eq1\",\"eq2\",\"eq3\",\"eq4\",\"eq5\"]},"
  "\"mix\":{\"name\":\"Mix\",\"knobs\":[\"gain\",\"pan\",\"sat\"],"
@@ -576,6 +615,7 @@ static void resolve_zones(chonk_t *inst) {
     inst->z_style[STYLE_PICK]   = inst->bass_zones.find("Articulation_Pick");
     inst->z_style[STYLE_SLAP]   = inst->bass_zones.find("Articulation_Slap");
     inst->z_let_ring   = inst->bass_zones.find("Articulation_Ring");
+    inst->z_pick_up    = inst->bass_zones.find("Pick_Up");
     inst->z_slide_up   = inst->bass_zones.find("Articulation_SlideUp");
     inst->z_slide_down = inst->bass_zones.find("Articulation_SlideDown");
     inst->z_out_wake     = inst->out_zones.find("WakeUp");
@@ -595,6 +635,8 @@ static void *v2_create_instance(const char *module_dir, const char *json_default
     for (int a = 0; a < A_COUNT; a++) inst->artic_key[a] = 0;
     inst->style_key = -1;
     inst->pending_trigger = -1.0f;
+    inst->next_up = 0;
+    inst->idle_frames = 0;
     if (module_dir) strncpy(inst->module_dir, module_dir, sizeof(inst->module_dir) - 1);
 
     int sr = (g_host && g_host->sample_rate > 0) ? g_host->sample_rate : MOVE_SAMPLE_RATE;
@@ -679,6 +721,13 @@ static void v2_on_midi(void *instance, const uint8_t *msg, int len, int source) 
                  * second control for the same value would only be a second
                  * place to look. */
                 case KS_RING:   if (inst->z_let_ring) *inst->z_let_ring = on ? 1.0f : 0.0f; break;
+                case KS_ALTPICK: inst->artic_key[A_ALTPICK] = on;
+                                 apply_artic(inst, A_ALTPICK);
+                                 /* Picking up or putting down the pad starts a
+                                  * fresh alternation rather than continuing
+                                  * whatever half-phrase was in progress. */
+                                 inst->next_up = 0;
+                                 break;
                 /* A style keyswitch selects while held; releasing it hands the
                  * string back to whatever the Style enum says. Releasing a pad
                  * that is not the one currently held (a roll across three of
@@ -817,6 +866,13 @@ static void v2_render_block(void *instance, int16_t *out_lr, int frames) {
 
     const int kMax = (int)(sizeof(inst->mono) / sizeof(inst->mono[0]));
     int done = 0;
+
+    /* A pause long enough to be a new phrase puts the pick back on a
+     * downstroke. Counted in rendered frames, so it is wall-clock and does not
+     * depend on how the host blocks its callbacks. */
+    int sr = (g_host && g_host->sample_rate > 0) ? g_host->sample_rate : MOVE_SAMPLE_RATE;
+    if (inst->idle_frames < sr) inst->idle_frames += frames;
+    if (inst->idle_frames >= sr * kAltPickResetMs / 1000) inst->next_up = 0;
 
     /* A forced retrigger: render exactly one frame with Trigger still at 0,
      * then raise it, so the next frame is a rising edge the DSP can see. */

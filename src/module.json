@@ -97,7 +97,7 @@
           "glide",
           "glide_ms",
           "frets",
-          "retrig"
+          "altpick"
         ],
         "params": [
           "style",
@@ -106,6 +106,7 @@
           "glide",
           "glide_ms",
           "frets",
+          "altpick",
           "retrig"
         ]
       },

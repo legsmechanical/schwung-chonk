@@ -318,6 +318,111 @@ int main(void) {
         ok(find_param("glide_ms")->def == 35.0f, "Glide Time defaults to upstream's 35 ms");
     }
 
+    /* ---- Alternate picking ----
+     * The DSP is told one thing per note: Pick_Up, 0 or 1. Everything else
+     * (which stroke, when the alternation restarts) is the wrapper's, so that
+     * is what these assert — plus that the two strokes actually differ in the
+     * audio, from two fresh instances so the noise generator starts in the
+     * same state and the only difference is the direction. ---- */
+    {
+        FAUSTFLOAT *zp = c->bass_zones.find("Pick_Up");
+        ok(zp != NULL, "the Pick_Up zone resolves");
+
+        /* Off: every note is a downstroke. */
+        api->set_param(inst, "altpick", "0");
+        api->set_param(inst, "all_notes_off", "1");
+        int all_down = 1;
+        for (int i = 0; i < 4; i++) {
+            note_on(api, inst, 48, 100); note_off(api, inst, 48);
+            if (zp && *zp != 0.0f) all_down = 0;
+        }
+        ok(all_down, "with Alt Pick off every note is a downstroke");
+
+        /* On: down, up, down, up — and a released string restarts on a down. */
+        api->set_param(inst, "altpick", "1");
+        api->set_param(inst, "all_notes_off", "1");
+        float seq[4];
+        note_on(api, inst, 48, 100);  seq[0] = zp ? *zp : -1;
+        note_on(api, inst, 50, 100);  seq[1] = zp ? *zp : -1;
+        note_on(api, inst, 52, 100);  seq[2] = zp ? *zp : -1;
+        note_on(api, inst, 53, 100);  seq[3] = zp ? *zp : -1;
+        printf("        stroke sequence: %.0f %.0f %.0f %.0f\n",
+               seq[0], seq[1], seq[2], seq[3]);
+        ok(seq[0] == 0 && seq[1] == 1 && seq[2] == 0 && seq[3] == 1,
+           "Alt Pick alternates down, up, down, up");
+
+        note_off(api, inst, 53); note_off(api, inst, 52);
+        note_off(api, inst, 50); note_off(api, inst, 48);
+
+        /* Releasing is NOT what restarts the count — picking is separate notes,
+         * so a line played staccato has to keep alternating. ONE note, then
+         * release, then the next: it has to come back up. (Four notes would
+         * have left the count on a downstroke anyway and proved nothing —
+         * which is what the first version of this check did.) */
+        api->set_param(inst, "all_notes_off", "1");
+        note_on(api, inst, 48, 100);
+        ok(zp && *zp == 0.0f, "first note of a phrase is a downstroke");
+        note_off(api, inst, 48);
+        render_peak(api, inst, 60);
+        note_on(api, inst, 48, 100);
+        ok(zp && *zp == 1.0f, "a released note does not restart the alternation");
+        note_off(api, inst, 48);
+
+        /* A PAUSE does restart it. */
+        render_peak(api, inst, kAltPickResetMs + 100);
+        note_on(api, inst, 48, 100);
+        ok(zp && *zp == 0.0f, "a pause puts the pick back on a downstroke");
+        note_off(api, inst, 48);
+
+        /* ... and a gap shorter than the pause does not. */
+        api->set_param(inst, "all_notes_off", "1");
+        note_on(api, inst, 48, 100); note_off(api, inst, 48);
+        render_peak(api, inst, 120);
+        note_on(api, inst, 50, 100);
+        ok(zp && *zp == 1.0f, "a short gap between notes keeps alternating");
+        api->set_param(inst, "all_notes_off", "1");
+
+        /* The pad inverts the latch, like every other articulation pad. */
+        api->set_param(inst, "altpick", "0");
+        note_on(api, inst, KS_ALTPICK, 100);
+        note_on(api, inst, 48, 100);
+        note_on(api, inst, 50, 100);
+        ok(zp && *zp == 1.0f, "holding the pad turns alternation on");
+        note_off(api, inst, KS_ALTPICK);
+        api->set_param(inst, "all_notes_off", "1");
+
+        /* Down and up must actually sound different. */
+        auto stroke = [&](int up, std::vector<int16_t> &out) {
+            void *t = api->create_instance(NULL, NULL);
+            chonk_t *tc = (chonk_t *)t;
+            api->set_param(t, "style", "Pick");
+            /* Steer the NEXT stroke rather than the zone: voice_note_on calls
+             * advance_pick, which would overwrite a zone set directly here —
+             * an earlier version of this test did exactly that and compared a
+             * downstroke with itself. */
+            api->set_param(t, "altpick", "1");
+            tc->next_up = up;
+            note_on(api, t, 48, 100);
+            out.clear();
+            int16_t buf[256];
+            for (int b = 0; b < 60; b++) {
+                api->render_block(t, buf, 128);
+                out.insert(out.end(), buf, buf + 256);
+            }
+            api->destroy_instance(t);
+        };
+        std::vector<int16_t> down, up;
+        stroke(0, down); stroke(1, up);
+        double d = 0, mag = 0;
+        for (size_t i = 0; i < down.size(); i++) {
+            d += fabs((double)down[i] - up[i]);
+            mag += fabs((double)down[i]);
+        }
+        printf("        down vs up: mean diff %.1f on mean level %.1f\n",
+               d / down.size(), mag / down.size());
+        ok(d / down.size() > 10.0, "a downstroke and an upstroke sound different");
+    }
+
     /* ---- Retrigger ----
      * Faust fires the pluck on a RISING edge of Trigger, so a second note at
      * the SAME velocity while the first is held does not re-pluck. Retrigger

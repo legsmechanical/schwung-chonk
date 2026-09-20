@@ -39,6 +39,7 @@ octave shift so the row stays reachable.
 | **C#2** | Slide down | **F2** | Slap |
 | **D2** | Finger | **F#2** | Legato |
 | **D#2** | Slide up | **G2** | Ring |
+| | | **G#2** | Alt Pick |
 
 **A held pad always wins, and never moves the parameter.** Style pads select
 that style while held, then hand back to the Style setting. Mute and Legato
@@ -53,7 +54,7 @@ Ring · Volume**, with the preset browser on the same page.
 | Page | |
 |---|---|
 | **String** | Pickup Pos, Brightness, Strike Hard, Thump, Tone, Sustain, Ring |
-| **Articulation** | Style, Mute, Legato, Glide, Glide Time, Frets, Retrigger |
+| **Articulation** | Style, Mute, Legato, Glide, Glide Time, Frets, Alt Pick, Retrigger |
 | **EQ** | 100 Hz shelf · 250 / 500 / 1.5 k peaks · 3 kHz shelf, ±12 dB |
 | **Mix** | Volume, Pan, Saturation |
 | **MIDI** | Fine Tune, Bend Range, AT Range, Vel Sens |
@@ -85,6 +86,18 @@ glide takes — on, it walks up the frets; off, it slides smoothly past them —
 and defaults on, which is how upstream always played. All three only matter
 when one note is held into the next; with Glide and Legato both off, Glide Time
 does nothing at all, because the DSP multiplies it by `glideTerm`.
+
+**Alt Pick** plays the line down, up, down, up instead of every note being a
+downstroke. Three things separate the two strokes: the pick pushes the string
+the other way (the part you hear against a string that is still ringing), the
+upstroke carries about 12% less energy, and its click is thinner, brighter and
+shorter. A phrase starts on a downstroke, and the count restarts after a pause
+of ~0.4 s — **not** when you release a note, because picking is separate notes
+and resetting on release would make every note a downstroke. Pad G#2.
+
+*The directions are physics; the amounts are judgement, not measurements from a
+real bass. They are all named constants at the top of the Alt Pick block in
+`params.lib` and each is one number.*
 
 **Retrigger** decides what an overlapping note does. Off (the original): a
 second note at the *same* velocity re-pitches the ringing string without
@@ -148,7 +161,7 @@ What this repo replaces is upstream's nih-plug/egui host.
 (transcribed from `OneTrickMonoVoice`, edge cases included), the MIDI surface,
 and the parameter surface Schwung reads.
 
-**Two changes were made to the DSP**, both marked `SCHWUNG PORT ADDITION`.
+**Three changes were made to the DSP**, all marked `SCHWUNG PORT ADDITION`.
 
 The first is the **Ring** release control. Upstream damps the released string to a
 fixed `bounceEfficiencyMuted = 0.5` with no control over it; Ring interpolates
@@ -157,7 +170,12 @@ done on the **log** of the two, because 0.5 and 0.999 are three orders of
 magnitude apart in decay time and a linear knob would do nothing for its first
 80%. At 0 it returns upstream's release to the sample.
 
-The second splits **Glide** and **Frets** out of Legato. Upstream welded three
+The second is **alternate picking**: a `Pick_Up` entry the wrapper writes one
+stroke at a time, driving the excitation's sign, its energy and the transient
+filter's corners. Deliberately unsmoothed — it has to be right at the trigger
+edge, and a ramp between strokes would make every pluck half of each.
+
+The third splits **Glide** and **Frets** out of Legato. Upstream welded three
 behaviours together: `stringSlide` glided only under `articulationLegato`, and
 `quantizeFrets` fretted only under Legato or an active slide pad. They are now
 their own controls, with `glideTerm = max(legato, glide)`, `articulationFrets`

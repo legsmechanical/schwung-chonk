@@ -93,6 +93,36 @@ glideTime = hslider("[280]Glide_Time[group:Bass][export:Glide Time][unit:ms]", 3
 // existed before it.
 articulationFrets = button("Articulation_Frets") : ot.smoothParamFast;
 
+// ── SCHWUNG PORT ADDITION (not upstream) ───────────────────────────────────
+// ALTERNATE PICKING. Pick_Up is written by the host per note: 0 for a
+// downstroke, 1 for an upstroke. It is deliberately NOT smoothed — it has to
+// be correct at the instant the trigger edge lands, and a ramp between strokes
+// would mean every pluck was half of each.
+//
+// Three things separate the two strokes, in descending order of how sure I am
+// of them:
+//
+//   1. DIRECTION. The pick pushes the string one way going down and the other
+//      going up, so the excitation goes in with the opposite sign. This is the
+//      part that is simply true of a plucked string, and it is not cosmetic:
+//      against a string that is still ringing, the two directions add and
+//      cancel differently, which is where the groove of alternate picking
+//      actually lives.
+//   2. ENERGY. A downstroke gets arm weight and follow-through behind it; an
+//      upstroke is a smaller motion. Down is the louder of the two.
+//   3. TRANSIENT. Less pick surface catches the string on the way up, so the
+//      click is thinner, brighter and shorter.
+//
+// ⚠ The AMOUNTS below are judgement, not measurement. They are deliberately
+// modest — enough to hear across a line, not enough to sound like two
+// different basses. Retune them here; each is one number.
+pickUp = nentry("Pick_Up", 0, 0, 1, 1);
+pickSign        = 1 - 2 * pickUp;        // downstroke +1, upstroke -1
+pickEnergy      = 1 - 0.12 * pickUp;     // upstroke moves ~12% less string
+pickClickDecay  = 1 - 0.25 * pickUp;     // ... and its click dies sooner
+pickClickHP     = 300 + 140 * pickUp;    // ... with less body
+pickClickLP     = 3750 + 1450 * pickUp;  // ... and more edge
+
 
 
 eqBand1 = hslider("[410]EQ_Band_1[group:EQ][export:Band 1][unit:dB]", 0, -12, 12, 0.01) : ot.smoothParam;
