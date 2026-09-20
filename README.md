@@ -1,175 +1,199 @@
-# CHONK — a Schwung module
+# CHONK
 
-A physically modeled electric bass monosynth for Schwung on the Ableton Move,
-ported from [**OneTrick CHONK**](https://punklabs.com/ot-chonk) by Punk Labs LLC
-(GPL-3.0-or-later). *It is free as in rights, not as in beer — if you play this,
-[buy a copy](https://punklabs.com/ot-chonk).*
+**A physically modeled electric bass for Schwung on the Ableton Move.**
 
-One waveguide, one string: a bass string with bridge and nut terminations, a
-pickup tapped part-way along it, a finger pluck and a noise transient at the
-strike. Not a sample, not a subtractive patch pretending — the reason a hard
-note rings differently from a soft one is that the model is being hit harder.
+Ported from [**OneTrick CHONK**](https://punklabs.com/ot-chonk) by **Punk Labs
+LLC** — the bass model is entirely theirs. *It is free as in rights, not as in
+beer: if you play this, [buy a copy](https://punklabs.com/ot-chonk).*
 
-## What was ported, and how
+One modelled string: bridge and nut terminations, a pickup tapped part-way
+along it, a finger pluck and a noise transient at the strike. A hard note rings
+differently from a soft one because the string is being hit harder — not
+because a different sample was chosen.
 
-The synth **is** Punk Labs' Faust code. `src/dsp/faust/bass.dsp` (the string)
-and `output.dsp` (EQ → saturation → panner) are their files, with `onetrick.lib`
-and `params.lib` beside them. They carry exactly one local change — the Ring
-release control, marked `SCHWUNG PORT ADDITION` at both sites and described
-below; everything else is upstream byte for byte. `scripts/gen_dsp.sh` compiles them
-to C++ — upstream's own build line with `-lang cpp` in place of `-lang rust` —
-into `src/dsp/generated/`, which is machine output and never hand-edited.
+---
 
-What this repo replaces is upstream's nih-plug/egui host:
-`src/dsp/chonk_plugin.cpp` is the `plugin_api_v2` wrapper holding the voice
-logic, the MIDI surface and the parameter surface Schwung reads. The voice
-semantics are transcribed from upstream's `OneTrickMonoVoice` — including the
-edge cases, which are load-bearing (see the comments in the wrapper).
+## Manual
 
-The original source drop is kept under `original source/` for provenance.
+### Playing
 
-## Playing it
+**Range C3–G6 (MIDI 48–91).** Notes outside it are ignored rather than folded
+in: below, the waveguide runs out of delay line; above, the model goes
+unstable. Upstream clamps the same window.
 
-**Range: C3–G6 (MIDI 48–91).** Below that the waveguide runs out of delay line,
-above it the model goes unstable, so upstream clamps it and so do we. Notes
-outside the window are ignored rather than folded in.
+**Monophonic by design.** A new note takes the string over; releasing it hands
+the string back to the note below without re-plucking. That handover is how one
+string works — it is not the Legato switch, which is off by default.
 
-**Articulations** work two ways — a pad while you hold it, a parameter the rest
-of the time. **The pad always wins while held**, and never moves the parameter:
+Play hard (velocity 108 and up) and it slaps on its own — upstream's
+`articulationSlapAuto`.
 
-| | keyswitch | parameter | held pad does |
+### The pads
+
+The octave below the playing range is articulation, and moves with the module's
+octave shift so the row stays reachable.
+
+| Pad | | Pad | |
 |---|---|---|---|
-| Style: Finger / Pick / Slap | D2 / E2 / F2 | `style` (enum) | selects that style; release returns to the enum |
-| Mute | C2 | `mute` | inverts it — a latched Mute lifts for one note |
-| Legato | F#2, or CC 68 | `legato` | inverts it |
-| Ring / Gate | G2 | — | rings the string out while held |
-| Slide down | C#2 | — | momentary only |
-| Slide up | D#2 | — | momentary only |
+| **C2** | Mute | **E2** | Pick |
+| **C#2** | Slide down | **F2** | Slap |
+| **D2** | Finger | **F#2** | Legato |
+| **D#2** | Slide up | **G2** | Ring |
 
-The toggles invert rather than OR so the pad means something in both
-directions: OR-ing made the pad a no-op whenever the latch was on, and there
-was no way to play one open note with Mute latched.
+**A held pad always wins, and never moves the parameter.** Style pads select
+that style while held, then hand back to the Style setting. Mute and Legato
+pads *invert* their switch — with Mute latched on, hold the pad to play one
+open note. Slide pads bend for as long as they are held, scaled by velocity.
 
-**Finger, Pick and Slap are one choice, not three switches**, and the choice is
-narrower than it looks. `articulationStyleAmount` appears exactly once in the
-whole DSP (`bass.dsp:122`): a style does nothing but override the Strike
-Hardness knob with a fixed value — Finger 0, Pick 0.5, Slap 1.0 — because
-`articulationStyleHardness = max(pick * 1/2, slap)` collapses the buttons to a
-single number. Measured over all 8 button combinations at three knob settings,
-they produce **3 distinct sounds**; with Strike Hardness at 100, "Off" is
-bit-identical to Slap. So the enum reaches every state the model has, and the
-five extra toggle combinations were duplicates.
+### Knobs and pages
 
-The keyswitch octave moves with the module's octave shift, because on Move these
-are pads on the same grid and a fixed C2 row would walk off the bottom of it.
-Slide is velocity-scaled and ramps for as long as the key is held, which is why
-it has no latch: a latched slide would climb 48 semitones and stay there.
+Knob row: **Pickup Pos · Brightness · Strike Hard · Thump · Tone · Sustain ·
+Ring · Volume**, with the preset browser on the same page.
 
-Slap also arrives on its own above velocity ~0.85 (upstream's
-`articulationSlapAuto`) — hit the pads hard and it is there without a keyswitch.
+| Page | |
+|---|---|
+| **String** | Pickup Pos, Brightness, Strike Hard, Thump, Tone, Sustain, Ring |
+| **Articulation** | Style, Mute, Legato, Retrigger |
+| **EQ** | 100 Hz shelf · 250 / 500 / 1.5 k peaks · 3 kHz shelf, ±12 dB |
+| **Mix** | Volume, Pan, Saturation |
+| **MIDI** | Fine Tune, Bend Range, AT Range, Vel Sens |
 
-### Two upstream behaviours worth knowing, because they read as broken knobs
+**Pickup Pos** moves the pickup along the string — low is fat and neck-ish,
+high is nasal and bridge-ish. **Tone** is the passive tone control, a 1-pole
+lowpass from 300 to 2500 Hz. **Volume** runs −60…+6 dB, a narrowed slice of
+upstream's −100…+6 (the bottom 40 dB are all silence).
 
-**Strike Hardness is bypassed whenever a style is engaged**, and again above
-velocity ~108. `bass.dsp:113` is
-`interpolate_linear(articulationStyleAmount, strikeHardness, articulationStyleHardness)`:
-the knob is only in circuit while `articulationStyleAmount` is 0. Since
-`articulationSlapAuto` ramps in from velocity 0.85, a hard-played note bypasses
-it too — measured, a 0 → 100 sweep at velocity 127 changes the output by
-nothing at all (rms 0.08413 either way). At velocity 100 it moves peak
-0.41 → 0.34. This is upstream's design, not a porting fault.
+### Articulation
+
+**Style — Off / Finger / Pick / Slap.** One choice, not four switches: in the
+model a style does nothing but replace the Strike Hardness knob with a set
+value — Finger 0, Pick 50, Slap 100, Off *the knob*. So **Off with Strike
+Hardness at 100 is Slap**, bit for bit.
+
+**Mute** damps the string fast and dull and gives the attack its own extra
+thump. While it is on the Thump knob is out of circuit.
+
+**Legato** is a sound, not a note-handling mode: it glides the pitch over 35 ms
+stepping through frets, and takes the click and the finger out of the output.
+The note-to-note handover happens with Legato off as well.
+
+**Retrigger** decides what an overlapping note does. Off (the original): a
+second note at the *same* velocity re-pitches the ringing string without
+re-plucking; at a different velocity it plucks. On: every note-on plucks.
+
+**Ring** sets how far the release damps the string — 0 is the original's hard
+stop, 100 leaves it undamped to decay on its own. The G2 pad rings the string
+out while held, whatever the knob says.
+
+### MIDI
+
+Pitch bend by **Bend Range** (0–12 st). Aftertouch bends by **AT Range**
+(−2…+2 st; negative bends down). **Fine Tune** detunes ±100 cents. **Vel Sens**
+sets how far velocity moves the sound — at 0 every note plays as velocity 80.
+
+CC 1 mod wheel opens the sustain all the way up · CC 64 sustain holds notes ·
+CC 68 legato · CC 120/123 all notes off.
+
+### Presets
+
+Nine, from Punk Labs: **J-Bass, Defender, Demonster, Disco, Flatworm,
+Gargantuan, Justice, New Strings, Sitcom.** They set the String, EQ, Mix and
+MIDI pages; articulation is left alone, because it is how you are playing
+rather than what the patch is.
+
+On-device help covers all of the above (Shift+Vol+Menu → Help → Modules).
+
+---
+
+## Behaviours that read as broken knobs
+
+Both are upstream's design, and both were measured rather than assumed:
+
+**Strike Hardness is subtle, and often bypassed entirely.** `bass.dsp:122`
+interpolates *away* from the knob as `articulationStyleAmount` rises, so any
+engaged Style takes it out of circuit — and since `articulationSlapAuto` ramps
+in from velocity 0.85, a hard-played note does too. A 0 → 100 sweep at velocity
+127 changes the output by nothing at all (rms 0.08413 either way); at velocity
+100 it moves peak 0.41 → 0.34.
 
 **Thump is disabled by Mute and by Legato.** `extraThump` is pinned to 1.5 when
 Mute is on, and the whole term is multiplied by `(1 - articulationLegato)`.
-With neither engaged the knob is strong: attack rms 0.048 → 0.205 across its
-range. `./scripts/render.sh` renders both of these as A/B pairs.
+With neither engaged the knob is strong — attack rms 0.048 → 0.205 across its
+range.
 
-**Mono, by design.** A new note takes the string over; releasing it hands the
-string back to the note below without re-plucking. That is the legato behaviour,
-not a limitation to be fixed with more voices.
+`./scripts/render.sh` renders both as A/B pairs, alongside the styles, Ring and
+Retrigger.
 
-**Legato is a sound, not a note-handling mode.** `articulationLegato` appears
-four times in `bass.dsp` and every one is audio: a 35 ms glide on the pitch
-change with `quantizeFrets` stepping it through frets (`:93-94`), the pick
-click removed (`:158`), and the direct excitation taken out of the output tap
-(`:161`). The mono handover above happens with it off.
+---
 
-**Retrigger** (Articulation page, off by default) decides what an overlapping
-note does. Faust fires the pluck on a *rising edge* of `Trigger`, so a second
-note at the **same velocity** while the first is held does not re-pluck — at a
-different velocity it does. That is upstream's behaviour and it is usually the
-right feel. With Retrigger on, every note-on plucks: the wrapper drops the zone
-to 0 and lets `render_block` raise it after one rendered frame, which is the
-only way a block-rate host can manufacture an edge. It costs a sample of delay
-on the pluck, not a sample of audio — unlike upstream's `burn_sample`, that
-frame is rendered into the output rather than discarded.
+## How it was ported
 
-Mod wheel opens the string's sustain right up. Aftertouch bends (range set by
-`at_range`), pitch bend by `pw_range`. Sustain pedal (CC 64) holds notes — the
-wrapper's addition; upstream's DSP has no use for it.
+The synth **is** Punk Labs' Faust code. `src/dsp/faust/bass.dsp` (the string)
+and `output.dsp` (EQ → saturation → panner) sit beside their `onetrick.lib` and
+`params.lib`. `scripts/gen_dsp.sh` compiles them to C++ with upstream's own
+build line, `-lang cpp` in place of `-lang rust`, into `src/dsp/generated/` —
+machine output, never hand-edited.
 
-## Parameters
+What this repo replaces is upstream's nih-plug/egui host.
+`src/dsp/chonk_plugin.cpp` is the `plugin_api_v2` wrapper: the voice logic
+(transcribed from `OneTrickMonoVoice`, edge cases included), the MIDI surface,
+and the parameter surface Schwung reads.
 
-| Page | Params |
-|---|---|
-| root | Pickup Pos, Brightness, Strike Hard, Thump, Tone, Sustain, Ring, Volume + preset browser |
-| String | the six above, plus Ring |
-| Articulation | Style (Off/Finger/Pick/Slap), Mute, Legato, Retrigger |
-| EQ | 100 Hz shelf, 250 / 500 / 1.5 k peaks, 3 kHz shelf (±12 dB) |
-| Mix | Volume, Pan, Saturation |
-| MIDI | Fine Tune, Bend Range, AT Range, Vel Sens |
+**One change was made to the DSP**, marked `SCHWUNG PORT ADDITION` at both
+sites: the **Ring** release control. Upstream damps the released string to a
+fixed `bounceEfficiencyMuted = 0.5` with no control over it; Ring interpolates
+the release efficiency between that and the open value. The interpolation is
+done on the **log** of the two, because 0.5 and 0.999 are three orders of
+magnitude apart in decay time and a linear knob would do nothing for its first
+80%. At 0 it returns upstream's release to the sample.
 
-Volume is `-60…+6 dB`, a narrowed slice of upstream's `-100…+6`: the bottom
-40 dB of that range are all silence and are not worth a knob sweep. Everything
-else keeps upstream's range exactly.
+**Retrigger** needed no DSP change but is not a flag either: Faust fires the
+pluck on a *rising edge* of `Trigger`, which a block-rate host cannot
+manufacture by writing the zone twice between blocks. The wrapper drops the
+zone to 0 and lets `render_block` split one frame off the front and raise it
+after. The pluck lands a sample late; no audio is lost, unlike upstream's
+`burn_sample`, which discards the frame it advances.
 
-### Ring — the one thing added to the DSP
-
-Upstream damps the string hard on note-off (`bounceEfficiencyMuted = 0.5`) and
-offers no control over it. **Ring** (String page, 0–100%) sets how much the
-release damps: 0 is upstream's behaviour to the sample, 100 leaves the string
-undamped so it decays at its own sustain. The interpolation is done on the
-**log** of the two bounce efficiencies, because 0.5 and 0.999 are three orders
-of magnitude apart in decay time and a linear knob would do nothing for its
-first 80%.
-
-**Ring/Gate** is the G2 pad, and only the pad — a let-ring gesture, the way a
-sustain pedal is. It deliberately has no latched parameter: measured, a latch
-was worth exactly "Ring = 100" and nothing else (with the knob at 100 it
-changed the release tail by nothing at all), so a second control for the same
-value would only have been a second place to look.
-
-Both are marked `SCHWUNG PORT ADDITION` in `params.lib` and `bass.dsp`; they are
-the only edits to Punk Labs' DSP sources.
-
-**9 factory presets** ship compiled in, converted from Punk Labs' `.preset`
-files: J-Bass, Defender, Demonster, Disco, Flatworm, Gargantuan, Justice,
-New Strings, Sitcom.
+The original source drop is kept under `original source/` for provenance.
 
 ## Building
 
 ```sh
-./scripts/build.sh      # cross-compiles for Move via Docker -> dist/chonk-module.tar.gz
-./scripts/install.sh    # deploys to ableton@move.local (MOVE_HOST to override)
-./scripts/test.sh       # host-side tests, no device needed
-./scripts/render.sh     # audition WAV -> build/chonk_demo.wav
-./scripts/gen_dsp.sh    # regenerate the C++ from the .dsp sources (needs `brew install faust`)
+./scripts/build.sh      # cross-compile for Move via Docker -> dist/chonk-module.tar.gz
+./scripts/install.sh    # deploy to ableton@move.local (MOVE_HOST to override)
+./scripts/test.sh       # host-side tests + help lint, no device needed
+./scripts/render.sh     # audition/A-B WAV -> build/chonk_demo.wav
+./scripts/gen_dsp.sh    # regenerate the C++ from the .dsp sources (brew install faust)
 ```
 
-Faust is needed only to regenerate the DSP; the build container has a cross
+Faust is needed only to regenerate the DSP; the build container carries a cross
 compiler and nothing else.
 
-Two files are generated from the wrapper and must be regenerated when
-parameters change (`scripts/build.sh` does it): `src/module.json`'s
-`ui_hierarchy`, and `src/dsp/factory_bank.h`, which is indexed by `PARAMS[]`
-**position** — insert a parameter without regenerating and every preset value
-past the insertion loads one slot out, silently.
+Two files are generated from the wrapper and are regenerated by `build.sh`:
+`src/module.json`'s `ui_hierarchy`, and `src/dsp/factory_bank.h` — which is
+indexed by `PARAMS[]` **position**, so adding a parameter without regenerating
+loads every preset value past it one slot out, silently.
 
-## License
+## Credits and license
 
-GPL-3.0-or-later, inherited from OneTrick CHONK. `LICENSE` is upstream's copy;
+**OneTrick CHONK** — a physically modeled electric bass monosynth.
+Copyright © 2024 **Punk Labs LLC** · <https://punklabs.com/ot-chonk> ·
+<contact@punklabs.com>
+
+Move port by legsmechanical.
+
+Released under the **GNU General Public License v3.0 or later**, inherited from
+OneTrick CHONK. `LICENSE` is upstream's copy;
 `original source/OneTrickCHONK-Source-v1.0.0/NOTICES.txt` carries the full
-third-party acknowledgments (Faust's libraries, nih-plug, and the rest).
+third-party acknowledgments — Faust's standard libraries (Julius O. Smith III's
+filter and waveguide work among them), nih-plug, and the rest.
 
-    OneTrick CHONK, a physically modeled electric bass monosynth.
-    Copyright (C) 2024 Punk Labs LLC
+    This program is free software: you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by the Free
+    Software Foundation, either version 3 of the License, or (at your option)
+    any later version.
+
+    This program is distributed in the hope that it will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+    or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+    for more details.

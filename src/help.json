@@ -1,0 +1,373 @@
+{
+  "title": "CHONK",
+  "children": [
+    {
+      "title": "Overview",
+      "lines": [
+        "Electric bass, played",
+        "not sampled.",
+        "",
+        "One modelled string:",
+        "bridge and nut, a",
+        "pickup part-way down",
+        "it, a finger pluck",
+        "and a strike noise.",
+        "",
+        "A hard note rings",
+        "differently because",
+        "the string is hit",
+        "harder, not because a",
+        "louder sample was",
+        "chosen.",
+        "",
+        "Ported from OneTrick",
+        "CHONK by Punk Labs.",
+        "GPL-3.0-or-later."
+      ]
+    },
+    {
+      "title": "Playing",
+      "lines": [
+        "Range C3-G6. Notes",
+        "outside it are",
+        "ignored: below, the",
+        "string runs out of",
+        "delay line; above, it",
+        "goes unstable.",
+        "",
+        "Mono, by design. A",
+        "new note takes the",
+        "string over; letting",
+        "it go hands the",
+        "string back to the",
+        "note below without",
+        "re-plucking.",
+        "",
+        "Hit hard (vel 108+)",
+        "and it slaps on its",
+        "own."
+      ]
+    },
+    {
+      "title": "Pads",
+      "children": [
+        {
+          "title": "Articulation pads",
+          "lines": [
+            "The octave under the",
+            "playing range:",
+            "",
+            "C2   Mute",
+            "C#2  Slide down",
+            "D2   Finger",
+            "D#2  Slide up",
+            "E2   Pick",
+            "F2   Slap",
+            "F#2  Legato",
+            "G2   Ring",
+            "",
+            "They move with the",
+            "octave shift, so the",
+            "row stays reachable."
+          ]
+        },
+        {
+          "title": "Pad beats knob",
+          "lines": [
+            "A held pad always",
+            "wins, and never moves",
+            "the parameter.",
+            "",
+            "Style pads pick that",
+            "style while held,",
+            "then hand back to the",
+            "Style setting.",
+            "",
+            "Mute and Legato pads",
+            "INVERT their switch:",
+            "with Mute latched on,",
+            "hold the pad to play",
+            "one open note.",
+            "",
+            "Slide pads bend while",
+            "held, by velocity.",
+            "Ring pad rings the",
+            "string out."
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Knobs",
+      "lines": [
+        "1 Pickup Pos",
+        "2 Brightness",
+        "3 Strike Hard",
+        "4 Thump",
+        "5 Tone",
+        "6 Sustain",
+        "7 Ring",
+        "8 Volume",
+        "",
+        "Pages: String,",
+        "Articulation, EQ,",
+        "Mix, MIDI."
+      ]
+    },
+    {
+      "title": "String",
+      "children": [
+        {
+          "title": "The six knobs",
+          "lines": [
+            "Pickup Pos moves the",
+            "pickup along the",
+            "string: low is fat",
+            "and neck-ish, high is",
+            "nasal and bridge-ish.",
+            "",
+            "Brightness sets how",
+            "much high end the",
+            "string keeps as it",
+            "rings.",
+            "",
+            "Thump is the body of",
+            "the attack, tapped",
+            "straight off the",
+            "finger.",
+            "",
+            "Tone is the passive",
+            "tone control: a",
+            "1-pole lowpass, 300",
+            "to 2500 Hz.",
+            "",
+            "Sustain sets how long",
+            "a held note rings."
+          ]
+        },
+        {
+          "title": "Strike Hard",
+          "lines": [
+            "The pick click: how",
+            "hard and how bright",
+            "the strike noise is.",
+            "",
+            "It is SUBTLE, and it",
+            "is switched out of",
+            "circuit whenever a",
+            "Style is engaged, or",
+            "above velocity 108",
+            "where auto-slap takes",
+            "over. Both are the",
+            "original's design.",
+            "",
+            "If it seems dead,",
+            "check Style is Off",
+            "and play softer."
+          ]
+        },
+        {
+          "title": "Ring",
+          "lines": [
+            "How much the release",
+            "damps the string.",
+            "",
+            "0   stopped on",
+            "     release, as the",
+            "     original does",
+            "100 not damped at",
+            "     all; it decays",
+            "     on its own",
+            "",
+            "The G2 pad rings the",
+            "string out while held",
+            "whatever this says.",
+            "",
+            "Added by this port;",
+            "0 is the original."
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Articulation",
+      "children": [
+        {
+          "title": "Style",
+          "lines": [
+            "Off, Finger, Pick,",
+            "Slap.",
+            "",
+            "One choice, not four",
+            "switches: in the",
+            "model a style only",
+            "replaces the Strike",
+            "Hard knob with a set",
+            "value.",
+            "",
+            "Finger 0",
+            "Pick   50",
+            "Slap   100",
+            "Off    the knob",
+            "",
+            "So Off with Strike at",
+            "100 IS Slap."
+          ]
+        },
+        {
+          "title": "Mute",
+          "lines": [
+            "Palm mute: the string",
+            "damps fast and dull,",
+            "and the attack gets",
+            "its own extra thump.",
+            "",
+            "While Mute is on, the",
+            "Thump knob is out of",
+            "circuit."
+          ]
+        },
+        {
+          "title": "Legato",
+          "lines": [
+            "A sound, not a note",
+            "mode.",
+            "",
+            "It glides the pitch",
+            "over 35 ms, stepping",
+            "through frets, and",
+            "takes the click and",
+            "the finger out of the",
+            "output.",
+            "",
+            "Handing the string",
+            "from note to note",
+            "happens with Legato",
+            "OFF as well - that is",
+            "just how one string",
+            "works."
+          ]
+        },
+        {
+          "title": "Retrigger",
+          "lines": [
+            "What an overlapping",
+            "note does.",
+            "",
+            "Off: a second note at",
+            "the SAME velocity",
+            "does not re-pluck -",
+            "it changes the pitch",
+            "of the string that is",
+            "already ringing. At a",
+            "different velocity it",
+            "does pluck.",
+            "",
+            "On: every note-on",
+            "plucks.",
+            "",
+            "Off is the original,",
+            "and usually the",
+            "better feel."
+          ]
+        }
+      ]
+    },
+    {
+      "title": "EQ and Mix",
+      "lines": [
+        "EQ, five bands:",
+        "100 Hz shelf, 250,",
+        "500 and 1.5k peaks,",
+        "3 kHz shelf. +/-12 dB.",
+        "",
+        "Saturation drives the",
+        "output. Pan places",
+        "it. Volume is -60 to",
+        "+6 dB.",
+        "",
+        "The original went to",
+        "-100 dB; the bottom",
+        "40 of those are all",
+        "silence, so the knob",
+        "stops at -60."
+      ]
+    },
+    {
+      "title": "MIDI",
+      "lines": [
+        "Bend by Bend Range,",
+        "0-12 st.",
+        "",
+        "Aftertouch bends by",
+        "AT Range, -2 to +2 st",
+        "- negative bends down.",
+        "",
+        "Mod wheel (CC 1)",
+        "opens the sustain all",
+        "the way up.",
+        "",
+        "CC 64 sustain holds",
+        "notes. CC 68 is",
+        "Legato. CC 120/123",
+        "all notes off.",
+        "",
+        "Fine Tune detunes the",
+        "whole instrument by",
+        "+/-100 cents.",
+        "",
+        "Vel Sens sets how far",
+        "velocity moves the",
+        "sound; at 0 every",
+        "note plays as 80."
+      ]
+    },
+    {
+      "title": "Presets",
+      "lines": [
+        "Nine, from Punk Labs:",
+        "",
+        "J-Bass",
+        "Defender",
+        "Demonster",
+        "Disco",
+        "Flatworm",
+        "Gargantuan",
+        "Justice",
+        "New Strings",
+        "Sitcom",
+        "",
+        "They set the string,",
+        "EQ, Mix and MIDI",
+        "pages. Articulation",
+        "is left alone - it is",
+        "how you are playing,",
+        "not what the patch",
+        "is."
+      ]
+    },
+    {
+      "title": "Credits",
+      "lines": [
+        "OneTrick CHONK",
+        "(c) 2024 Punk Labs LLC",
+        "punklabs.com/ot-chonk",
+        "",
+        "The synth is their",
+        "Faust code, built for",
+        "Move. The bass model",
+        "is entirely theirs.",
+        "",
+        "It is free as in",
+        "rights, not as in",
+        "beer. If you play",
+        "this, buy a copy.",
+        "",
+        "GPL-3.0-or-later.",
+        "",
+        "Move port by",
+        "legsmechanical."
+      ]
+    }
+  ]
+}
