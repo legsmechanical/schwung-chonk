@@ -66,56 +66,64 @@ int main(int argc, char **argv) {
 
     clock_t t0 = clock();
 
-    /* 1 — J-Bass, a plain walking figure across the string's range. */
-    g_api->set_param(g_inst, "preset", "0");
+    /* Everything below is an A/B: the SAME note, the same velocity, one
+     * parameter moved. Announced in the console so the ear knows what it is
+     * listening for. */
+    auto set = [](const char *k, const char *v) { g_api->set_param(g_inst, k, v); };
+    auto say = [](const char *what) { printf("  %s\n", what); };
+
+    set("preset", "0");                     /* J-Bass, a plain starting point */
     render_ms(200);
-    int walk[] = {48, 55, 52, 55, 50, 57, 53, 55};
-    for (int i = 0; i < 8; i++) play(walk[i], 100, 280, 40);
-    render_ms(600);
 
-    /* 2 — the articulations, same note each time, so they can be compared. */
-    play(60, 100, 500, 300);                       /* open           */
-    g_api->set_param(g_inst, "mute", "1");
-    play(60, 100, 500, 300);                       /* palm mute      */
-    g_api->set_param(g_inst, "mute", "0");
-    g_api->set_param(g_inst, "pick", "1");
-    play(60, 100, 500, 300);                       /* pick           */
-    g_api->set_param(g_inst, "pick", "0");
-    g_api->set_param(g_inst, "slap", "1");
-    play(60, 120, 500, 500);                       /* slap           */
-    g_api->set_param(g_inst, "slap", "0");
+    /* 1 — Strike Hardness at velocity 100, where the knob is actually in
+     *     circuit. Subtle by upstream's design. */
+    say("1. strike 0 vs 100, vel 100");
+    set("strike", "0");   play(48, 100, 500, 400);
+    set("strike", "100"); play(48, 100, 500, 600);
 
-    /* 3 — legato: hold a note and add another. The string re-pitches without
-     *     re-plucking, which is the whole point of the mono voice. */
-    midi3(0x90, 48, 100);
-    render_ms(400);
-    midi3(0x90, 51, 100);   /* takes the string over */
-    render_ms(400);
-    midi3(0x80, 51, 0);     /* hands it back to 48   */
-    render_ms(600);
-    midi3(0x80, 48, 0);
-    render_ms(800);
+    /* 2 — the same at velocity 127, where articulationSlapAuto has taken the
+     *     knob out of circuit entirely. These two should sound IDENTICAL. */
+    say("2. strike 0 vs 100, vel 127 (auto-slap has bypassed the knob)");
+    set("strike", "0");   play(48, 127, 500, 400);
+    set("strike", "100"); play(48, 127, 500, 600);
+    set("strike", "0");
 
-    /* 4 — the slide keyswitch, bending up off a held note. */
-    midi3(0x90, 50, 100);
+    /* 3 — Thump, which moves the attack by about 4x in RMS. */
+    say("3. thump 0 vs 100");
+    set("thump", "0");   play(48, 100, 500, 400);
+    set("thump", "100"); play(48, 100, 500, 600);
+
+    /* 4 — the same Thump sweep with Mute engaged, where extraThump is pinned
+     *     to 1.5 and the knob does nothing at all. */
+    say("4. thump 0 vs 100 with Mute on (knob is out of circuit)");
+    set("mute", "1");
+    set("thump", "0");   play(48, 100, 500, 400);
+    set("thump", "100"); play(48, 100, 500, 600);
+    set("mute", "0");
+    set("thump", "50");
+
+    /* 5 — the playing styles, one knob now. */
+    say("5. style: off / finger / pick / slap");
+    const char *styles[] = {"Off", "Finger", "Pick", "Slap"};
+    for (int i = 0; i < 4; i++) { set("style", styles[i]); play(48, 100, 500, 400); }
+    set("style", "Off");
     render_ms(300);
-    midi3(0x90, KS_SLIDE_UP, 40);
-    render_ms(500);
-    midi3(0x80, KS_SLIDE_UP, 0);
-    render_ms(400);
-    midi3(0x80, 50, 0);
-    render_ms(600);
 
-    /* 5 — three more factory sounds on the same two notes. */
-    for (int p = 2; p <= 4; p++) {
-        char v[8]; snprintf(v, sizeof(v), "%d", p);
-        g_api->set_param(g_inst, "preset", v);
-        char name[64];
-        g_api->get_param(g_inst, "preset_name", name, sizeof(name));
-        printf("  preset %d: %s\n", p, name);
-        play(48, 100, 400, 100);
-        play(55, 110, 400, 500);
-    }
+    /* 6 — Ring: the release control this port adds. Same note, released at the
+     *     same moment; only the knob differs. */
+    say("6. ring 0 / 50 / 100 (note released after 400 ms)");
+    const char *rings[] = {"0", "50", "100"};
+    for (int i = 0; i < 3; i++) { set("ring", rings[i]); play(48, 100, 400, 1600); }
+    set("ring", "0");
+
+    /* 7 — Ring/Gate as a gesture: the G2 pad held across a phrase. */
+    say("7. the Ring/Gate pad held across a phrase");
+    midi3(0x90, KS_RING, 100);
+    play(48, 100, 200, 100);
+    play(55, 100, 200, 100);
+    play(51, 100, 200, 1400);
+    midi3(0x80, KS_RING, 0);
+    render_ms(400);
 
     double cpu = (double)(clock() - t0) / CLOCKS_PER_SEC;
     double audio = g_pcm.size() / 2.0 / MOVE_SAMPLE_RATE;

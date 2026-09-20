@@ -63,7 +63,16 @@ bass = result with {
     bounceEfficiencyOpen = it.interpolate_linear(stringFreq01, 0.9945, 0.9999) * sustainTerm;
     bounceEfficiencyMuted = 0.5;
     articulationMuteTerm = it.interpolate_linear(articulationMute, 1, it.interpolate_linear(stringFreq01, 0.75, 0.95));
-    bounceEfficiency = it.interpolate_linear(ot.input.gate : ot.smoothParamFast, bounceEfficiencyMuted,  bounceEfficiencyOpen*articulationMuteTerm) : ba.line(2/1000*ma.SR);
+    // ── SCHWUNG PORT ADDITION (not upstream) ──────────────────────────────
+    // The released string damps to bounceEfficiencyRelease instead of straight
+    // to bounceEfficiencyMuted. Interpolating the LOG of the two efficiencies
+    // interpolates the decay RATE, so the knob slows the release evenly
+    // instead of doing nothing for its first 80% — efficiency 0.5 and 0.999
+    // are three orders of magnitude apart in decay time. ringTerm = 0 gives
+    // log(muted) back exactly, i.e. upstream's release, so an untouched patch
+    // is unchanged.
+    bounceEfficiencyRelease = exp(it.interpolate_linear(ringTerm, log(bounceEfficiencyMuted), log(bounceEfficiencyOpen*articulationMuteTerm)));
+    bounceEfficiency = it.interpolate_linear(ot.input.gate : ot.smoothParamFast, bounceEfficiencyRelease,  bounceEfficiencyOpen*articulationMuteTerm) : ba.line(2/1000*ma.SR);
 
     stringThicknessDamping = stringNote : it.remap(minNote+6, maxNote-6, 0, 1) : max(0) : min(1) : it.interpolate_linear(_, 0.75, 1);
     stringCutoff = ot.interpolate_freq(stringBrightness, 8000, 12000) * stringThicknessDamping * (1-articulationMute*0.70);

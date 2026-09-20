@@ -102,6 +102,7 @@ static const host_api_v1_t *g_host = NULL;
 #define KS_PICK       40    /* E2  */
 #define KS_SLAP       41    /* F2  */
 #define KS_LEGATO     42    /* F#2 */
+#define KS_RING       43    /* G2  — this port's Ring/Gate, next pad up */
 
 #define CHONK_MAX_HELD 32
 
@@ -117,8 +118,19 @@ static const host_api_v1_t *g_host = NULL;
 enum ParamKind {
     K_NUM,      /* numeric, display == zone value                       */
     K_TOGGLE,   /* latched articulation: Off/On enum -> 0.0/1.0 button  */
+    K_STYLE,    /* the one-of-four playing style (see kStyleOpts)       */
     K_HOST      /* wrapper-side only: no Faust zone (velocity sens)     */
 };
+
+/* Finger / Pick / Slap are ONE CHOICE, not three switches. params.lib folds
+ * them with max():
+ *     articulationStyleAmount   = max(finger, pick, slap)
+ *     articulationStyleHardness = max(pick * 1/2, slap)
+ * so holding two just means the harder one wins and the other is inaudible.
+ * Declaring them as three independent toggles offered a state the DSP cannot
+ * represent; one enum is what the model actually has. */
+static const char *kStyleOpts[] = {"Off", "Finger", "Pick", "Slap"};
+enum { STYLE_OFF, STYLE_FINGER, STYLE_PICK, STYLE_SLAP, STYLE_COUNT };
 
 typedef struct {
     const char *key;      /* Schwung param key                   */
@@ -139,6 +151,9 @@ static const param_def_t PARAMS[] = {
     {"strike",   "Strike Hard", "StrikeHardness",  K_NUM,    0,   100,   0, "%"},
     {"thump",    "Thump",       "Bass_Thump",      K_NUM,    0,   100,  50, "%"},
     {"tone",     "Tone",        "Tone_Knob",       K_NUM,    0,   100,  50, "%"},
+    /* Ring is this port's addition to bass.dsp — how far the release is
+     * allowed to let the string keep sounding. 0 is upstream's release. */
+    {"ring",     "Ring",        "Ring",            K_NUM,    0,   100,   0, "%"},
 
     /* --- Mix (output.dsp) --- */
     {"gain",     "Volume",      "Mix_Gain",        K_NUM,  -60,     6,   0, "dB"},
@@ -164,11 +179,13 @@ static const param_def_t PARAMS[] = {
      * apply_artic). Slide Up/Down are deliberately NOT here: they are a
      * velocity-scaled ramp that runs for as long as the key is held, so a
      * latched one would climb 48 semitones and stay there. --- */
+    /* Numeric literals, not the STYLE_* names: tools/gen_factory_bank.mjs
+     * parses this table and indexes the bank by row, so a row it cannot read
+     * silently shortens every preset. 0..3 == Off/Finger/Pick/Slap. */
+    {"style",    "Style",       NULL,                  K_STYLE,  0,     3,   0, NULL},
     {"mute",     "Mute",        "Articulation_Mute",   K_TOGGLE, 0, 1, 0, NULL},
-    {"finger",   "Finger",      "Articulation_Finger", K_TOGGLE, 0, 1, 0, NULL},
-    {"pick",     "Pick",        "Articulation_Pick",   K_TOGGLE, 0, 1, 0, NULL},
-    {"slap",     "Slap",        "Articulation_Slap",   K_TOGGLE, 0, 1, 0, NULL},
     {"legato",   "Legato",      "Articulation_Legato", K_TOGGLE, 0, 1, 0, NULL},
+    {"let_ring", "Ring/Gate",   "Articulation_Ring",   K_TOGGLE, 0, 1, 0, NULL},
 };
 #define CHONK_PARAM_COUNT ((int)(sizeof(PARAMS) / sizeof(PARAMS[0])))
 
@@ -178,10 +195,10 @@ static const param_def_t *find_param(const char *key) {
     return NULL;
 }
 
-/* The five latched articulations, in PARAMS order, so the keyswitch side can
- * index the same storage. */
-enum { A_MUTE, A_FINGER, A_PICK, A_SLAP, A_LEGATO, A_COUNT };
-static const char *kArticKey[A_COUNT] = {"mute", "finger", "pick", "slap", "legato"};
+/* The latched on/off articulations. Style is not among them: it is one enum,
+ * and its keyswitches write that enum instead (see style_from_key). */
+enum { A_MUTE, A_LEGATO, A_LET_RING, A_COUNT };
+static const char *kArticKey[A_COUNT] = {"mute", "legato", "let_ring"};
 
 /* ======================================================================== *
  *  Instance
@@ -213,6 +230,8 @@ typedef struct {
     int     sustain_pedal;
 
     int     artic_key[A_COUNT];     /* held keyswitch */
+    int     style_key;              /* style keyswitch held, or -1 */
+    FAUSTFLOAT *z_style[STYLE_COUNT];  /* NULL, finger, pick, slap */
     int     octave_transpose;
     int     cur_preset;             /* index into CHONK_FACTORY, -1 = Init */
     char    module_dir[512];
@@ -240,11 +259,24 @@ static void apply_artic(chonk_t *inst, int a) {
     write_zone(inst, idx, on);
 }
 
+/* One of the three style buttons is up, the rest are down. A held keyswitch
+ * wins over the latched enum for as long as it is held — the pad is the
+ * gesture, the enum is the setting. */
+static void apply_style(chonk_t *inst) {
+    const param_def_t *p = find_param("style");
+    if (!p) return;
+    int latched = (int)inst->value[(int)(p - PARAMS)];
+    int eff = (inst->style_key >= 0) ? inst->style_key : latched;
+    for (int st = STYLE_FINGER; st <= STYLE_SLAP; st++)
+        if (inst->z_style[st]) *inst->z_style[st] = (st == eff) ? 1.0f : 0.0f;
+}
+
 static void set_value(chonk_t *inst, int i, float display) {
     const param_def_t *p = &PARAMS[i];
     float v = clampf(display, p->min, p->max);
     inst->value[i] = v;
     if (p->kind == K_HOST) return;
+    if (p->kind == K_STYLE) { apply_style(inst); return; }
     if (p->kind == K_TOGGLE) {
         for (int a = 0; a < A_COUNT; a++)
             if (strcmp(p->key, kArticKey[a]) == 0) { apply_artic(inst, a); return; }
@@ -336,6 +368,8 @@ static void all_notes_off(chonk_t *inst) {
     if (inst->z_slide_up) *inst->z_slide_up = 0.0f;
     if (inst->z_slide_down) *inst->z_slide_down = 0.0f;
     for (int a = 0; a < A_COUNT; a++) { inst->artic_key[a] = 0; apply_artic(inst, a); }
+    inst->style_key = -1;
+    apply_style(inst);
 }
 
 /* ======================================================================== *
@@ -349,7 +383,7 @@ static void load_preset(chonk_t *inst, int idx) {
     /* A preset carries the Bass/Mix/EQ/MIDI surface only; the articulation
      * latches are performance state and are left where the player put them. */
     for (int i = 0; i < CHONK_PARAM_COUNT; i++) {
-        if (PARAMS[i].kind == K_TOGGLE) continue;
+        if (PARAMS[i].kind == K_TOGGLE || PARAMS[i].kind == K_STYLE) continue;
         set_value(inst, i, pr->value[i]);
     }
     inst->cur_preset = idx;
@@ -369,19 +403,19 @@ static const char *kUiHierarchy =
    /* The browser lives on root, which is what puts it on page one — the host
     * plans a level's own browser before it walks that level's children. */
    "\"list_param\":\"preset\",\"count_param\":\"preset_count\",\"name_param\":\"preset_name\","
-   "\"knobs\":[\"pickup\",\"bright\",\"strike\",\"thump\",\"tone\",\"sustain\",\"sat\",\"gain\"],"
+   "\"knobs\":[\"pickup\",\"bright\",\"strike\",\"thump\",\"tone\",\"sustain\",\"ring\",\"gain\"],"
    "\"params\":["
-     "\"pickup\",\"bright\",\"strike\",\"thump\",\"tone\",\"sustain\",\"sat\",\"gain\","
+     "\"pickup\",\"bright\",\"strike\",\"thump\",\"tone\",\"sustain\",\"ring\",\"gain\","
      "{\"level\":\"string\",\"label\":\"String\"},"
      "{\"level\":\"artic\",\"label\":\"Articulation\"},"
      "{\"level\":\"eq\",\"label\":\"EQ\"},"
      "{\"level\":\"mix\",\"label\":\"Mix\"},"
      "{\"level\":\"midi\",\"label\":\"MIDI\"}"
    "]},"
- "\"string\":{\"name\":\"String\",\"knobs\":[\"pickup\",\"bright\",\"strike\",\"thump\",\"tone\",\"sustain\"],"
-   "\"params\":[\"pickup\",\"bright\",\"strike\",\"thump\",\"tone\",\"sustain\"]},"
- "\"artic\":{\"name\":\"Articulation\",\"knobs\":[\"mute\",\"finger\",\"pick\",\"slap\",\"legato\"],"
-   "\"params\":[\"mute\",\"finger\",\"pick\",\"slap\",\"legato\"]},"
+ "\"string\":{\"name\":\"String\",\"knobs\":[\"pickup\",\"bright\",\"strike\",\"thump\",\"tone\",\"sustain\",\"ring\"],"
+   "\"params\":[\"pickup\",\"bright\",\"strike\",\"thump\",\"tone\",\"sustain\",\"ring\"]},"
+ "\"artic\":{\"name\":\"Articulation\",\"knobs\":[\"style\",\"mute\",\"legato\",\"let_ring\"],"
+   "\"params\":[\"style\",\"mute\",\"legato\",\"let_ring\"]},"
  "\"eq\":{\"name\":\"EQ\",\"knobs\":[\"eq1\",\"eq2\",\"eq3\",\"eq4\",\"eq5\"],"
    "\"params\":[\"eq1\",\"eq2\",\"eq3\",\"eq4\",\"eq5\"]},"
  "\"mix\":{\"name\":\"Mix\",\"knobs\":[\"gain\",\"pan\",\"sat\"],"
@@ -396,6 +430,14 @@ static int build_chain_params(char *buf, int len) {
     for (int i = 0; i < CHONK_PARAM_COUNT && n < len - 256; i++) {
         const param_def_t *p = &PARAMS[i];
         if (i) n += snprintf(buf + n, len - n, ",");
+        if (p->kind == K_STYLE) {
+            n += snprintf(buf + n, len - n,
+                "{\"key\":\"%s\",\"name\":\"%s\",\"type\":\"enum\",\"options\":[", p->key, p->name);
+            for (int o = 0; o < STYLE_COUNT; o++)
+                n += snprintf(buf + n, len - n, "%s\"%s\"", o ? "," : "", kStyleOpts[o]);
+            n += snprintf(buf + n, len - n, "],\"default\":\"Off\"}");
+            continue;
+        }
         if (p->kind == K_TOGGLE) {
             n += snprintf(buf + n, len - n,
                 "{\"key\":\"%s\",\"name\":\"%s\",\"type\":\"enum\",\"options\":[\"Off\",\"On\"],\"default\":\"Off\"}",
@@ -470,6 +512,10 @@ static void resolve_zones(chonk_t *inst) {
     inst->z_modwheel   = inst->bass_zones.find("ModWheel");
     inst->z_aftertouch = inst->bass_zones.find("Aftertouch");
     inst->z_transpose  = inst->bass_zones.find("Transpose");
+    inst->z_style[STYLE_OFF]    = nullptr;
+    inst->z_style[STYLE_FINGER] = inst->bass_zones.find("Articulation_Finger");
+    inst->z_style[STYLE_PICK]   = inst->bass_zones.find("Articulation_Pick");
+    inst->z_style[STYLE_SLAP]   = inst->bass_zones.find("Articulation_Slap");
     inst->z_slide_up   = inst->bass_zones.find("Articulation_SlideUp");
     inst->z_slide_down = inst->bass_zones.find("Articulation_SlideDown");
     inst->z_out_wake     = inst->out_zones.find("WakeUp");
@@ -487,6 +533,7 @@ static void *v2_create_instance(const char *module_dir, const char *json_default
     inst->octave_transpose = 0;
     inst->cur_preset = -1;
     for (int a = 0; a < A_COUNT; a++) inst->artic_key[a] = 0;
+    inst->style_key = -1;
     if (module_dir) strncpy(inst->module_dir, module_dir, sizeof(inst->module_dir) - 1);
 
     int sr = (g_host && g_host->sample_rate > 0) ? g_host->sample_rate : MOVE_SAMPLE_RATE;
@@ -563,11 +610,23 @@ static void v2_on_midi(void *instance, const uint8_t *msg, int len, int source) 
                 case KS_SLIDE_DOWN:
                     if (inst->z_slide_down) *inst->z_slide_down = on ? (FAUSTFLOAT)vel : 0.0f;
                     break;
-                case KS_MUTE:   inst->artic_key[A_MUTE]   = on; apply_artic(inst, A_MUTE);   break;
-                case KS_FINGER: inst->artic_key[A_FINGER] = on; apply_artic(inst, A_FINGER); break;
-                case KS_PICK:   inst->artic_key[A_PICK]   = on; apply_artic(inst, A_PICK);   break;
-                case KS_SLAP:   inst->artic_key[A_SLAP]   = on; apply_artic(inst, A_SLAP);   break;
-                case KS_LEGATO: inst->artic_key[A_LEGATO] = on; apply_artic(inst, A_LEGATO); break;
+                case KS_MUTE:   inst->artic_key[A_MUTE]     = on; apply_artic(inst, A_MUTE);     break;
+                case KS_LEGATO: inst->artic_key[A_LEGATO]   = on; apply_artic(inst, A_LEGATO);   break;
+                case KS_RING:   inst->artic_key[A_LET_RING] = on; apply_artic(inst, A_LET_RING); break;
+                /* A style keyswitch selects while held; releasing it hands the
+                 * string back to whatever the Style enum says. Releasing a pad
+                 * that is not the one currently held (a roll across three of
+                 * them) must not clear the other's selection. */
+                case KS_FINGER:
+                case KS_PICK:
+                case KS_SLAP: {
+                    int st = (note == KS_FINGER) ? STYLE_FINGER
+                           : (note == KS_PICK)   ? STYLE_PICK : STYLE_SLAP;
+                    if (on) inst->style_key = st;
+                    else if (inst->style_key == st) inst->style_key = -1;
+                    apply_style(inst);
+                    break;
+                }
                 default: break;
             }
             break;
@@ -634,6 +693,12 @@ static void v2_set_param(void *instance, const char *key, const char *val) {
     const param_def_t *p = find_param(key);
     if (!p) return;
     int i = (int)(p - PARAMS);
+    if (p->kind == K_STYLE) {
+        for (int st = 0; st < STYLE_COUNT; st++)
+            if (strcmp(val, kStyleOpts[st]) == 0) { set_value(inst, i, (float)st); return; }
+        set_value(inst, i, (float)atoi(val));
+        return;
+    }
     if (p->kind == K_TOGGLE) {
         /* The shadow UI sends an enum as its index; accept "On"/"Off" too, so
          * a chain patch or a hand-written preset reads the way it looks. */
@@ -670,6 +735,7 @@ static int v2_get_param(void *instance, const char *key, char *buf, int buf_len)
     if (!p) return -1;   /* NEGATIVE for an unknown key: 0 would claim the value is "" */
     int i = (int)(p - PARAMS);
     if (p->kind == K_TOGGLE) return snprintf(buf, buf_len, "%d", inst->value[i] >= 0.5f ? 1 : 0);
+    if (p->kind == K_STYLE)  return snprintf(buf, buf_len, "%d", (int)inst->value[i]);
     return snprintf(buf, buf_len, "%.3f", inst->value[i]);
 }
 

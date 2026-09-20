@@ -33,7 +33,7 @@
           "thump",
           "tone",
           "sustain",
-          "sat",
+          "ring",
           "gain"
         ],
         "params": [
@@ -43,7 +43,7 @@
           "thump",
           "tone",
           "sustain",
-          "sat",
+          "ring",
           "gain",
           {
             "level": "string",
@@ -75,7 +75,8 @@
           "strike",
           "thump",
           "tone",
-          "sustain"
+          "sustain",
+          "ring"
         ],
         "params": [
           "pickup",
@@ -83,24 +84,23 @@
           "strike",
           "thump",
           "tone",
-          "sustain"
+          "sustain",
+          "ring"
         ]
       },
       "artic": {
         "name": "Articulation",
         "knobs": [
+          "style",
           "mute",
-          "finger",
-          "pick",
-          "slap",
-          "legato"
+          "legato",
+          "let_ring"
         ],
         "params": [
+          "style",
           "mute",
-          "finger",
-          "pick",
-          "slap",
-          "legato"
+          "legato",
+          "let_ring"
         ]
       },
       "eq": {

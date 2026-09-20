@@ -142,11 +142,77 @@ int main(void) {
     float pickup_after = c->value[(int)(find_param("pickup") - PARAMS)];
     ok(fabsf(pickup_before - pickup_after) > 0.5f, "loading a preset moves parameters");
 
-    /* Articulation latches are performance state: a preset leaves them alone. */
-    api->set_param(inst, "slap", "1");
+    /* Articulation state is performance state: a preset leaves it alone. */
+    api->set_param(inst, "style", "Slap");
+    api->set_param(inst, "let_ring", "1");
     api->set_param(inst, "preset", "5");
-    ok(get(api, inst, "slap") == "1", "a preset does not clear articulation latches");
-    api->set_param(inst, "slap", "0");
+    ok(get(api, inst, "style") == "3", "a preset does not clear the playing style");
+    ok(get(api, inst, "let_ring") == "1", "nor the Ring/Gate latch");
+    api->set_param(inst, "style", "Off");
+    api->set_param(inst, "let_ring", "0");
+
+    /* ---- Style is ONE choice: the three Faust buttons are mutually exclusive.
+     * params.lib folds them with max(), so two at once is a state the model
+     * cannot represent — the enum is what stops the UI offering it. ---- */
+    FAUSTFLOAT *zf = c->bass_zones.find("Articulation_Finger");
+    FAUSTFLOAT *zp = c->bass_zones.find("Articulation_Pick");
+    FAUSTFLOAT *zs = c->bass_zones.find("Articulation_Slap");
+    ok(zf && zp && zs, "the three style zones resolve");
+    api->set_param(inst, "style", "Pick");
+    ok(*zp >= 0.5f && *zf < 0.5f && *zs < 0.5f, "Pick selects exactly one style");
+    api->set_param(inst, "style", "2");            /* the same, as an index */
+    ok(*zp >= 0.5f, "an enum index selects the same option");
+    api->set_param(inst, "style", "Off");
+    ok(*zf < 0.5f && *zp < 0.5f && *zs < 0.5f, "Off clears every style");
+
+    /* A held style keyswitch wins while held, then hands back to the enum. */
+    api->set_param(inst, "style", "Finger");
+    note_on(api, inst, KS_SLAP, 100);
+    ok(*zs >= 0.5f && *zf < 0.5f, "a held keyswitch overrides the enum");
+    note_off(api, inst, KS_SLAP);
+    ok(*zf >= 0.5f && *zs < 0.5f, "releasing it hands the string back to the enum");
+    /* Rolling across two pads must not let the released one clear the held. */
+    note_on(api, inst, KS_PICK, 100);
+    note_on(api, inst, KS_SLAP, 100);
+    note_off(api, inst, KS_PICK);
+    ok(*zs >= 0.5f, "releasing a pad that is not the held one changes nothing");
+    note_off(api, inst, KS_SLAP);
+    api->set_param(inst, "style", "Off");
+
+    /* ---- Ring: this port's release control ---- */
+    FAUSTFLOAT *zring = c->bass_zones.find("Ring");
+    ok(zring != NULL, "the Ring zone resolves");
+    api->set_param(inst, "ring", "75");
+    ok(fabsf(*zring - 75.0f) < 0.01f, "Ring reaches the DSP");
+    ok(find_param("ring")->def == 0.0f, "Ring defaults to 0 — upstream's release");
+
+    FAUSTFLOAT *zlet = c->bass_zones.find("Articulation_Ring");
+    ok(zlet != NULL, "the Ring/Gate zone resolves");
+    note_on(api, inst, KS_RING, 100);
+    ok(*zlet >= 0.5f, "the G2 keyswitch engages Ring/Gate");
+    note_off(api, inst, KS_RING);
+    ok(*zlet < 0.5f, "and releases it");
+    api->set_param(inst, "ring", "0");
+
+    /* A released note must ring measurably longer with Ring up. Same note,
+     * same velocity, same release point: only the knob differs. */
+    {
+        float tail[2];
+        const float settings[2] = {0.0f, 100.0f};
+        for (int k = 0; k < 2; k++) {
+            void *t = api->create_instance(NULL, NULL);
+            char v[8]; snprintf(v, sizeof(v), "%.0f", settings[k]);
+            api->set_param(t, "ring", v);
+            note_on(api, t, 48, 100);
+            render_peak(api, t, 400);
+            note_off(api, t, 48);
+            render_peak(api, t, 150);          /* let the damping take hold */
+            tail[k] = render_peak(api, t, 400);
+            api->destroy_instance(t);
+        }
+        printf("        release tail: ring 0 = %.5f, ring 100 = %.5f\n", tail[0], tail[1]);
+        ok(tail[1] > tail[0] * 2.0f, "Ring 100 leaves the string ringing after release");
+    }
 
     /* ---- state blob ---- */
     api->set_param(inst, "tone", "17");

@@ -39,6 +39,16 @@ mixThump = hslider("[250]Bass_Thump[group:Bass][export:Thump][unit:%]", 50, 0, 1
 toneKnob01 = hslider("[260]Tone_Knob[group:Bass][export:Tone Knob][unit:%]", 50, 0, 100, 0.01) / 100;
 toneKnob = ot.interpolate_freq(toneKnob01, 300, 2500);
 
+// ── SCHWUNG PORT ADDITION (not upstream) ───────────────────────────────────
+// Ring: how much the string is allowed to keep ringing after the key is
+// released. 0 = upstream's behaviour exactly (the release damps the string to
+// bounceEfficiencyMuted), 100 = the release does not damp at all and the note
+// decays at its own sustain. Read by bass.dsp's bounceEfficiency.
+ringAmount = hslider("[270]Ring[group:Bass][export:Ring][unit:%]", 0, 0, 100, 0.01) / 100;
+// The Ring/Gate articulation overrides the knob while engaged — a let-ring
+// gesture, the way a sustain pedal is, rather than another value to dial in.
+ringTerm = max(ringAmount, articulationRing);
+
 fineTune = hslider("[310]Fine_Tune[group:MIDI][export:Fine Tune][unit:c]", 0, -100, 100, 0.01) / 100 : ot.smoothParam : ba.semi2ratio;
 midiAftertouchRange = hslider("[320]Midi_Afterouch_range[group:MIDI][export:Aftertouch Range][unit:st]", 1, -2, 2, 0.01);
 midiPitchWheelRange = hslider("[330]Midi_PitchWheel_range[group:MIDI][export:PitchWheel Range][unit:st]", 2, 0, 12, 0.01);
@@ -57,6 +67,9 @@ articulationStyleHardness = max(articulationPick * 1/2, articulationSlap);
 
 articulationSlide = (nentry("Articulation_SlideUp",0,0,1,0.01) - nentry("Articulation_SlideDown",0,0,1,0.01)) * 48;
 articulationLegato = button("Articulation_Legato") : ot.smoothParamFast;
+
+// SCHWUNG PORT ADDITION (not upstream): the Ring/Gate toggle.
+articulationRing = button("Articulation_Ring") : ot.smoothParamFast;
 
 
 
