@@ -71,6 +71,22 @@ articulationLegato = button("Articulation_Legato") : ot.smoothParamFast;
 // SCHWUNG PORT ADDITION (not upstream): the Ring/Gate toggle.
 articulationRing = button("Articulation_Ring") : ot.smoothParamFast;
 
+// ── SCHWUNG PORT ADDITION (not upstream) ───────────────────────────────────
+// Upstream's Legato does three things at once: it glides the pitch, it frets
+// that glide, and it takes the click and the finger out of the output. These
+// two switches break the first two out so they can be had on their own.
+//
+// glideTerm keeps Legato implying glide, so Legato sounds exactly as it always
+// has; Glide adds the slide WITHOUT losing the click.
+articulationGlide = button("Articulation_Glide") : ot.smoothParamFast;
+glideTerm = max(articulationLegato, articulationGlide);
+
+// Frets decides whether a glide walks up the frets or slides smoothly past
+// them. Upstream fretted whenever Legato or a slide pad was active; this
+// switch defaults ON, which is that same behaviour for every case that
+// existed before it.
+articulationFrets = button("Articulation_Frets") : ot.smoothParamFast;
+
 
 
 eqBand1 = hslider("[410]EQ_Band_1[group:EQ][export:Band 1][unit:dB]", 0, -12, 12, 0.01) : ot.smoothParam;

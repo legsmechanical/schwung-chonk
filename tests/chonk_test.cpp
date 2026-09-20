@@ -14,6 +14,7 @@
 #include <cstdio>
 #include <cmath>
 #include <string>
+#include <vector>
 
 static int g_fail = 0;
 static int g_checks = 0;
@@ -218,6 +219,73 @@ int main(void) {
         }
         printf("        release tail: ring 0 = %.5f, ring 100 = %.5f\n", tail[0], tail[1]);
         ok(tail[1] > tail[0] * 2.0f, "Ring 100 leaves the string ringing after release");
+    }
+
+    /* ---- Glide and Frets ----
+     * Upstream welded both to Legato. These assert the split by RENDERING a
+     * note change and comparing the audio: a switch that reaches the DSP
+     * changes the samples, and one that silently missed its zone does not.
+     * (An earlier version of set_value returned before writing any toggle
+     * without a keyswitch — which is exactly this bug, and it was invisible
+     * from the parameter readback.) ---- */
+    {
+        FAUSTFLOAT *zg = c->bass_zones.find("Articulation_Glide");
+        FAUSTFLOAT *zfr = c->bass_zones.find("Articulation_Frets");
+        ok(zg && zfr, "the Glide and Frets zones resolve");
+        api->set_param(inst, "glide", "1");
+        ok(zg && *zg >= 0.5f, "Glide reaches the DSP");
+        api->set_param(inst, "glide", "0");
+        ok(zg && *zg < 0.5f, "and clears");
+        ok(find_param("frets")->def == 1.0f, "Frets defaults ON (upstream's behaviour)");
+
+        /* Render 48 -> 55 as an overlap, once per setting, and total the
+         * absolute difference between the two renders. */
+        auto render_change = [&](const char *key, const char *val, std::vector<int16_t> &out) {
+            void *t = api->create_instance(NULL, NULL);
+            api->set_param(t, key, val);
+            note_on(api, t, 48, 100);
+            int16_t buf[256];
+            for (int b = 0; b < 140; b++) api->render_block(t, buf, 128);
+            note_on(api, t, 55, 100);
+            out.clear();
+            for (int b = 0; b < 40; b++) {   /* ~115 ms, covers the 35 ms glide */
+                api->render_block(t, buf, 128);
+                out.insert(out.end(), buf, buf + 256);
+            }
+            api->destroy_instance(t);
+        };
+        auto diff = [](const std::vector<int16_t> &a, const std::vector<int16_t> &b) {
+            double d = 0;
+            for (size_t i = 0; i < a.size() && i < b.size(); i++) d += fabs((double)a[i] - b[i]);
+            return d / (a.size() ? a.size() : 1);
+        };
+        std::vector<int16_t> off, on;
+        render_change("glide", "0", off);
+        render_change("glide", "1", on);
+        double d_glide = diff(off, on);
+        printf("        note change, mean sample diff: glide %.1f\n", d_glide);
+        ok(d_glide > 10.0, "Glide alone changes how the pitch travels");
+
+        /* Frets, with glide on in both renders: same journey, different path. */
+        std::vector<int16_t> fret_on, fret_off;
+        {
+            void *t = api->create_instance(NULL, NULL);
+            api->set_param(t, "glide", "1");
+            api->set_param(t, "frets", "0");
+            note_on(api, t, 48, 100);
+            int16_t buf[256];
+            for (int b = 0; b < 140; b++) api->render_block(t, buf, 128);
+            note_on(api, t, 55, 100);
+            for (int b = 0; b < 40; b++) {
+                api->render_block(t, buf, 128);
+                fret_off.insert(fret_off.end(), buf, buf + 256);
+            }
+            api->destroy_instance(t);
+        }
+        fret_on = on;   /* glide 1, frets at its default of ON */
+        double d_frets = diff(fret_on, fret_off);
+        printf("        glided change, mean sample diff: frets %.1f\n", d_frets);
+        ok(d_frets > 10.0, "Frets changes the path of a glide");
     }
 
     /* ---- Retrigger ----

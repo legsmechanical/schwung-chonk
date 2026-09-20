@@ -94,12 +94,16 @@
           "style",
           "mute",
           "legato",
+          "glide",
+          "frets",
           "retrig"
         ],
         "params": [
           "style",
           "mute",
           "legato",
+          "glide",
+          "frets",
           "retrig"
         ]
       },

@@ -249,6 +249,36 @@
           ]
         },
         {
+          "title": "Glide and Frets",
+          "lines": [
+            "Legato glides the",
+            "pitch; these two let",
+            "you have the glide",
+            "without the rest of",
+            "it.",
+            "",
+            "Glide slides between",
+            "notes over 35 ms and",
+            "KEEPS the click.",
+            "Legato still glides",
+            "on its own, so both",
+            "on is just Legato.",
+            "",
+            "Frets sets the path:",
+            "on, the glide walks",
+            "up the frets; off, it",
+            "slides smoothly past",
+            "them. On by default,",
+            "which is how the",
+            "original always",
+            "played.",
+            "",
+            "Both only matter when",
+            "one note is held into",
+            "the next."
+          ]
+        },
+        {
           "title": "Retrigger",
           "lines": [
             "What an overlapping",

@@ -53,7 +53,7 @@ Ring · Volume**, with the preset browser on the same page.
 | Page | |
 |---|---|
 | **String** | Pickup Pos, Brightness, Strike Hard, Thump, Tone, Sustain, Ring |
-| **Articulation** | Style, Mute, Legato, Retrigger |
+| **Articulation** | Style, Mute, Legato, Glide, Frets, Retrigger |
 | **EQ** | 100 Hz shelf · 250 / 500 / 1.5 k peaks · 3 kHz shelf, ±12 dB |
 | **Mix** | Volume, Pan, Saturation |
 | **MIDI** | Fine Tune, Bend Range, AT Range, Vel Sens |
@@ -76,6 +76,13 @@ thump. While it is on the Thump knob is out of circuit.
 **Legato** is a sound, not a note-handling mode: it glides the pitch over 35 ms
 stepping through frets, and takes the click and the finger out of the output.
 The note-to-note handover happens with Legato off as well.
+
+**Glide** and **Frets** are the first two of those broken out. Glide slides
+between held notes over 35 ms while *keeping* the click; Legato still implies
+glide, so Legato alone sounds exactly as it always has. Frets sets the path a
+glide takes — on, it walks up the frets; off, it slides smoothly past them —
+and defaults on, which is how upstream always played. Both only matter when one
+note is held into the next.
 
 **Retrigger** decides what an overlapping note does. Off (the original): a
 second note at the *same* velocity re-pitches the ringing string without
@@ -139,13 +146,20 @@ What this repo replaces is upstream's nih-plug/egui host.
 (transcribed from `OneTrickMonoVoice`, edge cases included), the MIDI surface,
 and the parameter surface Schwung reads.
 
-**One change was made to the DSP**, marked `SCHWUNG PORT ADDITION` at both
-sites: the **Ring** release control. Upstream damps the released string to a
+**Two changes were made to the DSP**, both marked `SCHWUNG PORT ADDITION`.
+
+The first is the **Ring** release control. Upstream damps the released string to a
 fixed `bounceEfficiencyMuted = 0.5` with no control over it; Ring interpolates
 the release efficiency between that and the open value. The interpolation is
 done on the **log** of the two, because 0.5 and 0.999 are three orders of
 magnitude apart in decay time and a linear knob would do nothing for its first
 80%. At 0 it returns upstream's release to the sample.
+
+The second splits **Glide** and **Frets** out of Legato. Upstream welded three
+behaviours together: `stringSlide` glided only under `articulationLegato`, and
+`quantizeFrets` fretted only under Legato or an active slide pad. They are now
+their own switches, with `glideTerm = max(legato, glide)` and `articulationFrets`
+defaulting on, so every combination that existed before behaves as it did.
 
 **Retrigger** needed no DSP change but is not a flag either: Faust fires the
 pluck on a *rising edge* of `Trigger`, which a block-rate host cannot

@@ -90,8 +90,14 @@ bass = result with {
 
     shift = ot.input.pitchShiftSmooth(midiPitchWheelRange)+((ot.input.aftertouch*midiAftertouchRange) : ot.smoothParamFast);
     clampNote = max(minNote) : min(maxNote);
-    quantizeFrets = _ <: it.interpolate_linear(articulationLegato+(abs(slideKey)>0.1), _, ot.quantizeFrets);
-    stringSlide = ot.smoothT60_WithoutWake(articulationLegato*35/1000) : +(slideKey) : quantizeFrets;
+    // ── SCHWUNG PORT ADDITION (not upstream) ──────────────────────────────
+    // Was: interpolate_linear(articulationLegato+(abs(slideKey)>0.1), ...) --
+    // fretting was welded to Legato and to the slide pads, and gliding was
+    // welded to Legato. Both are now switches of their own (params.lib).
+    // articulationFrets defaults ON and glideTerm = max(legato, glide), so
+    // every combination that existed before behaves as it did.
+    quantizeFrets = _ <: it.interpolate_linear(articulationFrets, _, ot.quantizeFrets);
+    stringSlide = ot.smoothT60_WithoutWake(glideTerm*35/1000) : +(slideKey) : quantizeFrets;
     // stringSlide = ba.line(articulationLegato * 80/1000*ma.SR) : quantizeFrets;
     stringNote = key : stringSlide : +(shift) : clampNote : ot.smoothWaveguide; 
     stringFreq = ba.midikey2hz(stringNote) * fineTune; // Smooth prevents accidental pops/brightness

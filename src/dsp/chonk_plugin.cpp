@@ -185,6 +185,13 @@ static const param_def_t PARAMS[] = {
     {"style",    "Style",       NULL,                  K_STYLE,  0,     3,   0, NULL},
     {"mute",     "Mute",        "Articulation_Mute",   K_TOGGLE, 0, 1, 0, NULL},
     {"legato",   "Legato",      "Articulation_Legato", K_TOGGLE, 0, 1, 0, NULL},
+    /* Glide and Frets are the two halves of Legato that upstream welded to it.
+     * Legato still implies glide (params.lib: glideTerm = max of the two), so
+     * Legato alone sounds as it always has; Glide adds the slide while KEEPING
+     * the click. Frets defaults ON, which is upstream's behaviour for every
+     * case that existed before the switch. */
+    {"glide",    "Glide",       "Articulation_Glide",  K_TOGGLE, 0, 1, 0, NULL},
+    {"frets",    "Frets",       "Articulation_Frets",  K_TOGGLE, 0, 1, 1, NULL},
     /* Wrapper-side: nothing in the DSP to write, it changes how Trigger is
      * driven. See voice_note_on and v2_render_block. */
     {"retrig",   "Retrigger",   NULL,                  K_TOGGLE, 0, 1, 0, NULL},
@@ -292,8 +299,14 @@ static void set_value(chonk_t *inst, int i, float display) {
     if (p->kind == K_HOST) return;
     if (p->kind == K_STYLE) { apply_style(inst); return; }
     if (p->kind == K_TOGGLE) {
+        /* The ones with a pad go through apply_artic, which folds the pad in. */
         for (int a = 0; a < A_COUNT; a++)
             if (strcmp(p->key, kArticKey[a]) == 0) { apply_artic(inst, a); return; }
+        /* The ones without a pad are written straight. This fallthrough is
+         * load-bearing: before Glide and Frets existed every toggle had a pad,
+         * and a `return` here would have left their zones at 0 forever with
+         * nothing reporting a problem. */
+        write_zone(inst, i, v >= 0.5f ? 1.0f : 0.0f);
         return;
     }
     write_zone(inst, i, v);
@@ -455,8 +468,8 @@ static const char *kUiHierarchy =
    "]},"
  "\"string\":{\"name\":\"String\",\"knobs\":[\"pickup\",\"bright\",\"strike\",\"thump\",\"tone\",\"sustain\",\"ring\"],"
    "\"params\":[\"pickup\",\"bright\",\"strike\",\"thump\",\"tone\",\"sustain\",\"ring\"]},"
- "\"artic\":{\"name\":\"Articulation\",\"knobs\":[\"style\",\"mute\",\"legato\",\"retrig\"],"
-   "\"params\":[\"style\",\"mute\",\"legato\",\"retrig\"]},"
+ "\"artic\":{\"name\":\"Articulation\",\"knobs\":[\"style\",\"mute\",\"legato\",\"glide\",\"frets\",\"retrig\"],"
+   "\"params\":[\"style\",\"mute\",\"legato\",\"glide\",\"frets\",\"retrig\"]},"
  "\"eq\":{\"name\":\"EQ\",\"knobs\":[\"eq1\",\"eq2\",\"eq3\",\"eq4\",\"eq5\"],"
    "\"params\":[\"eq1\",\"eq2\",\"eq3\",\"eq4\",\"eq5\"]},"
  "\"mix\":{\"name\":\"Mix\",\"knobs\":[\"gain\",\"pan\",\"sat\"],"

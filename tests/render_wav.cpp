@@ -138,6 +138,20 @@ int main(int argc, char **argv) {
     }
     set("retrig", "0");
 
+    /* 9 — Glide and Frets, on a held note change (48 -> 55 -> 48). */
+    say("9. note change: no glide / glide fretted / glide smooth / legato");
+    struct { const char *g, *f, *l; } gcase[] = {
+        {"0","1","0"}, {"1","1","0"}, {"1","0","0"}, {"0","1","1"},
+    };
+    for (int i = 0; i < 4; i++) {
+        set("glide", gcase[i].g); set("frets", gcase[i].f); set("legato", gcase[i].l);
+        midi3(0x90, 48, 100); render_ms(400);
+        midi3(0x90, 55, 100); render_ms(500);
+        midi3(0x80, 55, 0);   render_ms(400);
+        midi3(0x80, 48, 0);   render_ms(600);
+    }
+    set("glide", "0"); set("frets", "1"); set("legato", "0");
+
     double cpu = (double)(clock() - t0) / CLOCKS_PER_SEC;
     double audio = g_pcm.size() / 2.0 / MOVE_SAMPLE_RATE;
     printf("rendered %.1f s of audio in %.2f s  (%.0fx realtime, workstation)\n",
