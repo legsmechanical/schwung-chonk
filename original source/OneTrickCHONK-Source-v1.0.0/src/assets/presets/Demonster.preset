@@ -1,0 +1,29 @@
+{
+  "tags": [
+    "Disco"
+  ],
+  "info": {
+    "Author": "Punk Labs",
+    "Description": "The preset used in the demo song"
+  },
+  "params": {
+    "Bass Pickup Position": 50.0,
+    "Bass Strike Hardness": 9.999993324279785,
+    "Bass String Brightness": 50.0,
+    "Bass Sustain": 92.0,
+    "Bass Thump": 68.74999237060547,
+    "Bass Tone Knob": 62.5,
+    "EQ Band 1": 0.0,
+    "EQ Band 2": 0.0,
+    "EQ Band 3": 0.0,
+    "EQ Band 4": 3.359999656677246,
+    "EQ Band 5": 0.0,
+    "MIDI Aftertouch Range": 1.0,
+    "MIDI Fine Tune": 0.0,
+    "MIDI PitchWheel Range": 2.0,
+    "MIDI Sensitivity": 100.0,
+    "Mix Gain": 0.0,
+    "Mix Pan": 0.0,
+    "Mix Saturation": 37.49999237060547
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "version": "0.1.0",
+  "name": "CHONK",
+  "description": "Physically modeled electric bass monosynth, ported from OneTrick CHONK (Punk Labs LLC). Waveguide string with movable pickup, finger/pick/slap/mute articulations, legato and slide keyswitches, 5-band EQ and saturation. 9 factory presets.",
+  "download_url": "https://github.com/legsmechanical/schwung-chonk/releases/download/v0.1.0/chonk-module.tar.gz"
+}

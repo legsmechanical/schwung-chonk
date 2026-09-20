@@ -1,0 +1,67 @@
+/*
+   ┏━━━┓╱╱╱╱╱┏┓╱╱┏┓╱╱╱╱╱┏┓╱╱
+   ┃┏━┓┃╱╱╱╱╱┃┃╱╱┃┃╱╱╱╱╱┃┃╱╱╱
+   ┃┗━┛┣┓┏┳━━┫┃┏┓┃┃╱╱┏━━┫┗━┳━━┓
+   ┃┏━━┫┃┃┃┏┓┃┗┛┃┃┃╱┏┫┏┓┃┏┓┃━━┫
+   ┃┃╱╱┃┗┛┃┃┃┃┏┓┃┃┗━┛┃┏┓┃┗┛┣━━┃
+   ┗┛╱╱┗━━┻┛┗┻┛┗┛┗━━━┻┛┗┻━━┻━━┛
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    Copyright (c) 2024 Punk Labs LLC
+
+    This section is part of OneTrick CHONK
+
+    OneTrick CHONK is free software: you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by the Free
+    Software Foundation, either version 3 of the License, or (at your option)
+    any later version.
+
+    OneTrick CHONK is distributed in the hope that it will be useful, but WITHOUT
+    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+    more details.
+
+    You should have received a copy of the GNU General Public License along with
+    OneTrick CHONK.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+import("onetrick.lib");
+
+mixGain = ba.db2linear(max(-100, hslider("[110]Mix_Gain[group:Mix][export:Gain][unit:dB]", 0, -100, 6, 0.1) ) : ot.smoothParam);
+mixPan = hslider("[120]Mix_Pan[group:Mix][export:Pan][unit:%]", 0, -100, 100, 0.01) * 0.01 : ot.smoothParam;
+mixSaturation = hslider("[130]Mix_Saturation[group:Mix][export:Saturation][unit:%]", 0, 0, 100, 0.01) * 0.01;
+
+pickupPos01 = hslider("[210]Pickup_Position[group:Bass][export:Pickup Position][unit:%]", 50, 0, 100, 0.01) / 100;
+sustain = it.interpolate_linear(ot.input.modWheel, hslider("[220]Sustain[group:Bass][export:Sustain][unit:%]", 100, 0, 100, 0.01) / 100, -1);
+stringBrightness = hslider("[230]Brightness[group:Bass][export:String Brightness][unit:%]", 50, 0, 100, 0.01) / 100;
+strikeHardness = hslider("[240]StrikeHardness[group:Bass][export:Strike Hardness][unit:%]", 0, 0, 100, 0.01) / 100;
+mixThump = hslider("[250]Bass_Thump[group:Bass][export:Thump][unit:%]", 50, 0, 100, 0.01) / 100 * 3.0;
+toneKnob01 = hslider("[260]Tone_Knob[group:Bass][export:Tone Knob][unit:%]", 50, 0, 100, 0.01) / 100;
+toneKnob = ot.interpolate_freq(toneKnob01, 300, 2500);
+
+fineTune = hslider("[310]Fine_Tune[group:MIDI][export:Fine Tune][unit:c]", 0, -100, 100, 0.01) / 100 : ot.smoothParam : ba.semi2ratio;
+midiAftertouchRange = hslider("[320]Midi_Afterouch_range[group:MIDI][export:Aftertouch Range][unit:st]", 1, -2, 2, 0.01);
+midiPitchWheelRange = hslider("[330]Midi_PitchWheel_range[group:MIDI][export:PitchWheel Range][unit:st]", 2, 0, 12, 0.01);
+
+//toneKnob01 = it.interpolate_linear(ot.input.modWheel, hslider("[220]Tone_Knob[group:Bass][export:Tone Knob][unit:%]", 50, 0, 100, 0.01) / 100, 1);
+
+articulationMute = button("Articulation_Mute") : ot.smoothParamFast;
+
+articulationFinger = button("Articulation_Finger") : ot.smoothParamFast;
+articulationPick = button("Articulation_Pick") : ot.smoothParamFast;
+articulationSlap = button("Articulation_Slap") : ot.smoothParamFast : max(articulationSlapAuto);
+articulationSlapAuto = ot.input.velocity : it.remap(0.85, 1.0, 0, 1) : max(0) : pow(_, 1.5);
+
+articulationStyleAmount = articulationFinger : max(articulationPick) : max(articulationSlap);
+articulationStyleHardness = max(articulationPick * 1/2, articulationSlap);
+
+articulationSlide = (nentry("Articulation_SlideUp",0,0,1,0.01) - nentry("Articulation_SlideDown",0,0,1,0.01)) * 48;
+articulationLegato = button("Articulation_Legato") : ot.smoothParamFast;
+
+
+
+eqBand1 = hslider("[410]EQ_Band_1[group:EQ][export:Band 1][unit:dB]", 0, -12, 12, 0.01) : ot.smoothParam;
+eqBand2 = hslider("[420]EQ_Band_2[group:EQ][export:Band 2][unit:dB]", 0, -12, 12, 0.01) : ot.smoothParam;
+eqBand3 = hslider("[430]EQ_Band_3[group:EQ][export:Band 3][unit:dB]", 0, -12, 12, 0.01) : ot.smoothParam;
+eqBand4 = hslider("[440]EQ_Band_4[group:EQ][export:Band 4][unit:dB]", 0, -12, 12, 0.01) : ot.smoothParam;
+eqBand5 = hslider("[450]EQ_Band_5[group:EQ][export:Band 5][unit:dB]", 0, -12, 12, 0.01) : ot.smoothParam;

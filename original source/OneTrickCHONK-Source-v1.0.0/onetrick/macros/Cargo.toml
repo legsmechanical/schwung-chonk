@@ -1,0 +1,12 @@
+[package]
+name = "onetrick_macros"
+version = "0.0.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = "2.0.72"
+quote = "1.0.36"

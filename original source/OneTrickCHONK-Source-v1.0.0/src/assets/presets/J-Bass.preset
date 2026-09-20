@@ -1,0 +1,29 @@
+{
+  "tags": [
+    "Default"
+  ],
+  "info": {
+    "Author": "Punk Labs",
+    "Description": "It's like the P-Bass, but a different letter."
+  },
+  "params": {
+    "Bass Pickup Position": 68.0,
+    "Bass Strike Hardness": 0.0,
+    "Bass String Brightness": 50.0,
+    "Bass Sustain": 100.0,
+    "Bass Thump": 39.999996185302734,
+    "Bass Tone Knob": 23.250001907348633,
+    "EQ Band 1": 0.0,
+    "EQ Band 2": 0.0,
+    "EQ Band 3": 0.0,
+    "EQ Band 4": 0.0,
+    "EQ Band 5": 0.0,
+    "MIDI Aftertouch Range": 1.0,
+    "MIDI Fine Tune": 0.0,
+    "MIDI PitchWheel Range": 2.0,
+    "MIDI Sensitivity": 100.0,
+    "Mix Gain": 0.0,
+    "Mix Pan": 0.0,
+    "Mix Saturation": 0.0
+  }
+}

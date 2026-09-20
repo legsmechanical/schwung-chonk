@@ -1,0 +1,153 @@
+{
+  "id": "chonk",
+  "name": "CHONK",
+  "abbrev": "CHNK",
+  "version": "0.1.0",
+  "description": "Physically modeled electric bass monosynth, ported from OneTrick CHONK (Punk Labs LLC). Waveguide string with movable pickup, finger/pick/slap articulations, 5-band EQ and saturation. 9 factory presets.",
+  "author": "legsmechanical (DSP: Punk Labs LLC)",
+  "license": "GPL-3.0-or-later",
+  "ui": "ui.js",
+  "dsp": "dsp.so",
+  "api_version": 2,
+  "capabilities": {
+    "audio_out": true,
+    "audio_in": false,
+    "midi_in": true,
+    "midi_out": false,
+    "aftertouch": true,
+    "chainable": true,
+    "component_type": "sound_generator"
+  },
+  "ui_hierarchy": {
+    "modes": null,
+    "levels": {
+      "root": {
+        "label": "CHONK",
+        "list_param": "preset",
+        "count_param": "preset_count",
+        "name_param": "preset_name",
+        "knobs": [
+          "pickup",
+          "bright",
+          "strike",
+          "thump",
+          "tone",
+          "sustain",
+          "sat",
+          "gain"
+        ],
+        "params": [
+          "pickup",
+          "bright",
+          "strike",
+          "thump",
+          "tone",
+          "sustain",
+          "sat",
+          "gain",
+          {
+            "level": "string",
+            "label": "String"
+          },
+          {
+            "level": "artic",
+            "label": "Articulation"
+          },
+          {
+            "level": "eq",
+            "label": "EQ"
+          },
+          {
+            "level": "mix",
+            "label": "Mix"
+          },
+          {
+            "level": "midi",
+            "label": "MIDI"
+          }
+        ]
+      },
+      "string": {
+        "name": "String",
+        "knobs": [
+          "pickup",
+          "bright",
+          "strike",
+          "thump",
+          "tone",
+          "sustain"
+        ],
+        "params": [
+          "pickup",
+          "bright",
+          "strike",
+          "thump",
+          "tone",
+          "sustain"
+        ]
+      },
+      "artic": {
+        "name": "Articulation",
+        "knobs": [
+          "mute",
+          "finger",
+          "pick",
+          "slap",
+          "legato"
+        ],
+        "params": [
+          "mute",
+          "finger",
+          "pick",
+          "slap",
+          "legato"
+        ]
+      },
+      "eq": {
+        "name": "EQ",
+        "knobs": [
+          "eq1",
+          "eq2",
+          "eq3",
+          "eq4",
+          "eq5"
+        ],
+        "params": [
+          "eq1",
+          "eq2",
+          "eq3",
+          "eq4",
+          "eq5"
+        ]
+      },
+      "mix": {
+        "name": "Mix",
+        "knobs": [
+          "gain",
+          "pan",
+          "sat"
+        ],
+        "params": [
+          "gain",
+          "pan",
+          "sat"
+        ]
+      },
+      "midi": {
+        "name": "MIDI",
+        "knobs": [
+          "fine",
+          "pw_range",
+          "at_range",
+          "sens"
+        ],
+        "params": [
+          "fine",
+          "pw_range",
+          "at_range",
+          "sens"
+        ]
+      }
+    }
+  }
+}
