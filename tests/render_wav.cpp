@@ -125,6 +125,19 @@ int main(int argc, char **argv) {
     midi3(0x80, KS_RING, 0);
     render_ms(400);
 
+    /* 8 — Retrigger: the same note at the same velocity, four times, while the
+     *     first is still held. Off = one pluck ringing on; On = four. */
+    say("8. same note x4 at one velocity, held: retrigger off, then on");
+    for (int k = 0; k < 2; k++) {
+        set("retrig", k ? "1" : "0");
+        midi3(0x90, 48, 100);
+        render_ms(300);
+        for (int i = 0; i < 3; i++) { midi3(0x90, 48, 100); render_ms(300); }
+        midi3(0x80, 48, 0);
+        render_ms(700);
+    }
+    set("retrig", "0");
+
     double cpu = (double)(clock() - t0) / CLOCKS_PER_SEC;
     double audio = g_pcm.size() / 2.0 / MOVE_SAMPLE_RATE;
     printf("rendered %.1f s of audio in %.2f s  (%.0fx realtime, workstation)\n",

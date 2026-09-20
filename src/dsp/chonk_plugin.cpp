@@ -185,6 +185,9 @@ static const param_def_t PARAMS[] = {
     {"style",    "Style",       NULL,                  K_STYLE,  0,     3,   0, NULL},
     {"mute",     "Mute",        "Articulation_Mute",   K_TOGGLE, 0, 1, 0, NULL},
     {"legato",   "Legato",      "Articulation_Legato", K_TOGGLE, 0, 1, 0, NULL},
+    /* Wrapper-side: nothing in the DSP to write, it changes how Trigger is
+     * driven. See voice_note_on and v2_render_block. */
+    {"retrig",   "Retrigger",   NULL,                  K_TOGGLE, 0, 1, 0, NULL},
 };
 #define CHONK_PARAM_COUNT ((int)(sizeof(PARAMS) / sizeof(PARAMS[0])))
 
@@ -230,6 +233,7 @@ typedef struct {
 
     int     artic_key[A_COUNT];     /* held keyswitch */
     int     style_key;              /* style keyswitch held, or -1 */
+    float   pending_trigger;        /* velocity waiting for a forced edge, or -1 */
     FAUSTFLOAT *z_style[STYLE_COUNT];  /* NULL, finger, pick, slap */
     int     octave_transpose;
     int     cur_preset;             /* index into CHONK_FACTORY, -1 = Init */
@@ -316,10 +320,34 @@ static void voice_note_change(chonk_t *inst, float note) {
     if (inst->z_freq) *inst->z_freq = (FAUSTFLOAT)note_to_freq(note);
 }
 
+static int retrig_on(const chonk_t *inst) {
+    const param_def_t *p = find_param("retrig");
+    return p && inst->value[(int)(p - PARAMS)] >= 0.5f;
+}
+
 static void voice_note_on(chonk_t *inst, float note, float velocity) {
     inst->gate_count++;
     voice_wake(inst);
-    if (inst->z_trigger) *inst->z_trigger = (FAUSTFLOAT)velocity;
+    /*
+     * Faust edge-detects this: triggerAndVelocity fires only while
+     * Trigger > Trigger'. Writing the same velocity twice between blocks is
+     * therefore ONE value as far as the DSP is concerned, and the second note
+     * does not pluck — which is upstream's behaviour and is usually what you
+     * want under the fingers.
+     *
+     * Retrigger forces the edge the only way a block-rate host can: drop the
+     * zone to 0 now, and let render_block raise it after ONE frame. That costs
+     * a sample of delay on the pluck, not a sample of audio — the frame is
+     * rendered into the output like any other, unlike upstream's burn_sample
+     * hack, which discards one.
+     */
+    if (retrig_on(inst)) {
+        if (inst->z_trigger) *inst->z_trigger = 0.0f;
+        inst->pending_trigger = (float)velocity;
+    } else {
+        if (inst->z_trigger) *inst->z_trigger = (FAUSTFLOAT)velocity;
+        inst->pending_trigger = -1.0f;
+    }
     if (inst->z_gate) *inst->z_gate = 1.0f;
     if (inst->z_gain) *inst->z_gain = (FAUSTFLOAT)velocity;
     voice_note_change(inst, note);
@@ -371,6 +399,7 @@ static void mono_note_off(chonk_t *inst, uint8_t note) {
 }
 
 static void all_notes_off(chonk_t *inst) {
+    inst->pending_trigger = -1.0f;
     inst->held_count = 0;
     inst->sustained_count = 0;
     inst->gate_count = 0;
@@ -380,6 +409,7 @@ static void all_notes_off(chonk_t *inst) {
     if (inst->z_let_ring) *inst->z_let_ring = 0.0f;
     for (int a = 0; a < A_COUNT; a++) { inst->artic_key[a] = 0; apply_artic(inst, a); }
     inst->style_key = -1;
+    inst->pending_trigger = -1.0f;
     apply_style(inst);
 }
 
@@ -425,8 +455,8 @@ static const char *kUiHierarchy =
    "]},"
  "\"string\":{\"name\":\"String\",\"knobs\":[\"pickup\",\"bright\",\"strike\",\"thump\",\"tone\",\"sustain\",\"ring\"],"
    "\"params\":[\"pickup\",\"bright\",\"strike\",\"thump\",\"tone\",\"sustain\",\"ring\"]},"
- "\"artic\":{\"name\":\"Articulation\",\"knobs\":[\"style\",\"mute\",\"legato\"],"
-   "\"params\":[\"style\",\"mute\",\"legato\"]},"
+ "\"artic\":{\"name\":\"Articulation\",\"knobs\":[\"style\",\"mute\",\"legato\",\"retrig\"],"
+   "\"params\":[\"style\",\"mute\",\"legato\",\"retrig\"]},"
  "\"eq\":{\"name\":\"EQ\",\"knobs\":[\"eq1\",\"eq2\",\"eq3\",\"eq4\",\"eq5\"],"
    "\"params\":[\"eq1\",\"eq2\",\"eq3\",\"eq4\",\"eq5\"]},"
  "\"mix\":{\"name\":\"Mix\",\"knobs\":[\"gain\",\"pan\",\"sat\"],"
@@ -546,6 +576,7 @@ static void *v2_create_instance(const char *module_dir, const char *json_default
     inst->cur_preset = -1;
     for (int a = 0; a < A_COUNT; a++) inst->artic_key[a] = 0;
     inst->style_key = -1;
+    inst->pending_trigger = -1.0f;
     if (module_dir) strncpy(inst->module_dir, module_dir, sizeof(inst->module_dir) - 1);
 
     int sr = (g_host && g_host->sample_rate > 0) ? g_host->sample_rate : MOVE_SAMPLE_RATE;
@@ -768,9 +799,15 @@ static void v2_render_block(void *instance, int16_t *out_lr, int frames) {
 
     const int kMax = (int)(sizeof(inst->mono) / sizeof(inst->mono[0]));
     int done = 0;
+
+    /* A forced retrigger: render exactly one frame with Trigger still at 0,
+     * then raise it, so the next frame is a rising edge the DSP can see. */
+    int split = (inst->pending_trigger >= 0.0f) ? 1 : 0;
+
     while (done < frames) {
         int n = frames - done;
         if (n > kMax) n = kMax;
+        if (split) { n = 1; split = 0; }
 
         FAUSTFLOAT *bass_out[1] = {inst->mono};
         inst->bass.compute(n, nullptr, bass_out);
@@ -789,6 +826,11 @@ static void v2_render_block(void *instance, int16_t *out_lr, int frames) {
             out_lr[(done + i) * 2 + 1] = (int16_t)lrintf(r * 32767.0f);
         }
         done += n;
+
+        if (inst->pending_trigger >= 0.0f) {
+            if (inst->z_trigger) *inst->z_trigger = (FAUSTFLOAT)inst->pending_trigger;
+            inst->pending_trigger = -1.0f;
+        }
     }
 }
 

@@ -220,6 +220,47 @@ int main(void) {
         ok(tail[1] > tail[0] * 2.0f, "Ring 100 leaves the string ringing after release");
     }
 
+    /* ---- Retrigger ----
+     * Faust fires the pluck on a RISING edge of Trigger, so a second note at
+     * the SAME velocity while the first is held does not re-pluck. Retrigger
+     * forces the edge by holding the zone at 0 for one rendered frame. ---- */
+    {
+        float attack[2];
+        for (int k = 0; k < 2; k++) {
+            void *t = api->create_instance(NULL, NULL);
+            api->set_param(t, "retrig", k ? "1" : "0");
+            note_on(api, t, 48, 100);
+            render_peak(api, t, 400);              /* let the first note settle */
+            /* Same note, same velocity: the case the edge detector eats. */
+            note_on(api, t, 48, 100);
+            attack[k] = render_peak(api, t, 40);
+            api->destroy_instance(t);
+        }
+        printf("        same-velocity restrike: off = %.4f, retrig = %.4f\n",
+               attack[0], attack[1]);
+        ok(attack[1] > attack[0] * 1.2f, "Retrigger re-plucks a same-velocity restrike");
+    }
+
+    /* The forced edge must not cost a frame of audio: the block still renders
+     * exactly the frames it was asked for, and none of them are dropped. */
+    {
+        void *t = api->create_instance(NULL, NULL);
+        api->set_param(t, "retrig", "1");
+        note_on(api, t, 48, 100);
+        int16_t buf[128 * 2];
+        for (int i = 0; i < 128 * 2; i++) buf[i] = 0x7777;   /* poison */
+        api->render_block(t, buf, 128);
+        int untouched = 0;
+        for (int i = 0; i < 128 * 2; i++) if (buf[i] == 0x7777) untouched++;
+        ok(untouched == 0, "a forced retrigger still fills every frame of the block");
+        chonk_t *tc = (chonk_t *)t;
+        ok(tc->pending_trigger < 0.0f, "and the pending edge is consumed by that block");
+        api->destroy_instance(t);
+    }
+
+    /* Off by default: upstream's behaviour is what an untouched patch gets. */
+    ok(find_param("retrig")->def == 0.0f, "Retrigger defaults to off");
+
     /* ---- state blob ---- */
     api->set_param(inst, "tone", "17");
     api->set_param(inst, "octave_transpose", "-1");

@@ -93,12 +93,14 @@
         "knobs": [
           "style",
           "mute",
-          "legato"
+          "legato",
+          "retrig"
         ],
         "params": [
           "style",
           "mute",
-          "legato"
+          "legato",
+          "retrig"
         ]
       },
       "eq": {

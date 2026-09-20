@@ -88,6 +88,22 @@ range. `./scripts/render.sh` renders both of these as A/B pairs.
 string back to the note below without re-plucking. That is the legato behaviour,
 not a limitation to be fixed with more voices.
 
+**Legato is a sound, not a note-handling mode.** `articulationLegato` appears
+four times in `bass.dsp` and every one is audio: a 35 ms glide on the pitch
+change with `quantizeFrets` stepping it through frets (`:93-94`), the pick
+click removed (`:158`), and the direct excitation taken out of the output tap
+(`:161`). The mono handover above happens with it off.
+
+**Retrigger** (Articulation page, off by default) decides what an overlapping
+note does. Faust fires the pluck on a *rising edge* of `Trigger`, so a second
+note at the **same velocity** while the first is held does not re-pluck — at a
+different velocity it does. That is upstream's behaviour and it is usually the
+right feel. With Retrigger on, every note-on plucks: the wrapper drops the zone
+to 0 and lets `render_block` raise it after one rendered frame, which is the
+only way a block-rate host can manufacture an edge. It costs a sample of delay
+on the pluck, not a sample of audio — unlike upstream's `burn_sample`, that
+frame is rendered into the output rather than discarded.
+
 Mod wheel opens the string's sustain right up. Aftertouch bends (range set by
 `at_range`), pitch bend by `pw_range`. Sustain pedal (CC 64) holds notes — the
 wrapper's addition; upstream's DSP has no use for it.
@@ -98,7 +114,7 @@ wrapper's addition; upstream's DSP has no use for it.
 |---|---|
 | root | Pickup Pos, Brightness, Strike Hard, Thump, Tone, Sustain, Ring, Volume + preset browser |
 | String | the six above, plus Ring |
-| Articulation | Style (Off/Finger/Pick/Slap), Mute, Legato |
+| Articulation | Style (Off/Finger/Pick/Slap), Mute, Legato, Retrigger |
 | EQ | 100 Hz shelf, 250 / 500 / 1.5 k peaks, 3 kHz shelf (±12 dB) |
 | Mix | Volume, Pan, Saturation |
 | MIDI | Fine Tune, Bend Range, AT Range, Vel Sens |
