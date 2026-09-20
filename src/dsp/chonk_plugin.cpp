@@ -61,6 +61,11 @@ typedef struct host_api_v1 {
     float (*get_bpm)(void);
     int (*midi_inject_to_move)(const uint8_t *msg, int len);
     int (*slot_recv_channel)(void *instance);
+    /* Appended by the host after slot_recv_channel; unused here, but the tail
+     * is carried so this copy stays layout-identical to the real header. */
+    double (*get_beat_position)(void);
+    int (*midi_send_internal_slot)(int slot, const uint8_t *msg, int len);
+    int (*clock_output_enabled)(void);
 } host_api_v1_t;
 
 typedef struct plugin_api_v2 {
@@ -657,6 +662,9 @@ static int v2_get_param(void *instance, const char *key, char *buf, int buf_len)
     }
     if (strcmp(key, "octave_transpose") == 0)
         return snprintf(buf, buf_len, "%d", inst->octave_transpose);
+    /* The shared sound-generator UI puts this in the status line. One
+     * waveguide, one string — see the voice-model note at the top. */
+    if (strcmp(key, "polyphony") == 0) return snprintf(buf, buf_len, "1");
 
     const param_def_t *p = find_param(key);
     if (!p) return -1;   /* NEGATIVE for an unknown key: 0 would claim the value is "" */
@@ -666,7 +674,8 @@ static int v2_get_param(void *instance, const char *key, char *buf, int buf_len)
 }
 
 static int v2_get_error(void *instance, char *buf, int buf_len) {
-    (void)instance; (void)buf; (void)buf_len;
+    (void)instance;
+    if (buf && buf_len > 0) buf[0] = '\0';
     return 0;
 }
 

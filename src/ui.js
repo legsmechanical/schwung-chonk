@@ -21,9 +21,9 @@ const ui = createSoundGeneratorUI({
         host_module_set_param('all_notes_off', '1');
     },
 
-    /* Monophonic by design: one waveguide, one string. */
+    /* The status line reads `polyphony` off the DSP; the wrapper serves 1,
+     * because one waveguide is one string and that is worth saying on screen. */
     showPolyphony: true,
-    polyphony: 1,
     showOctave: true,
 });
 
