@@ -48,23 +48,34 @@ open note. Slide pads bend for as long as they are held, scaled by velocity.
 
 ### Knobs and pages
 
-Knob row: **Pickup Pos · Brightness · Strike Hard · Thump · Tone · Sustain ·
-Ring · Volume**, with the preset browser on the same page.
+The front page is the string, and the sub-pages split **by hand** — what the
+striking hand is doing, and what happens between notes.
 
-| Page | |
-|---|---|
-| **String** | Pickup Pos, Brightness, Strike Hard, Thump, Tone, Sustain, Ring |
-| **Articulation** | Style, Mute, Legato, Glide, Glide Time, Frets, Alt Pick, Retrigger |
-| **EQ** | 100 Hz shelf · 250 / 500 / 1.5 k peaks · 3 kHz shelf, ±12 dB |
-| **Mix** | Volume, Pan, Saturation |
-| **MIDI** | Fine Tune, Bend Range, AT Range, Vel Sens |
+```
+root  ·  the string                        + preset browser
+  1 Pickup   2 Bright   3 Tone             timbre
+  4 Thump                                  attack body
+  5 Sustain  6 Ring                        how long it holds, how it lets go
+  7 Sat      8 Volume                      output
+
+  Attack     Style · Strike · Mute · Alt Pick · Pick Depth
+  Fretting   Legato · Glide · Glide Time · Frets · Retrigger
+  Output     Volume · Pan · Sat · EQ 100 · 250 · 500 · 1.5k · 3k
+  MIDI       Fine Tune · Bend Range · AT Range · Vel Sens
+```
+
+**Style and Strike Hardness share a page because they are one control** — a
+style does nothing but replace Strike with a fixed value. Split across pages,
+as they were, the knob reads as broken. Saturation and Volume are on the root
+knob row but live on Output; a level's knobs need not be in its own params, so
+the row is what you play while the menu stays the string and four doors.
 
 **Pickup Pos** moves the pickup along the string — low is fat and neck-ish,
 high is nasal and bridge-ish. **Tone** is the passive tone control, a 1-pole
 lowpass from 300 to 2500 Hz. **Volume** runs −60…+6 dB, a narrowed slice of
 upstream's −100…+6 (the bottom 40 dB are all silence).
 
-### Articulation
+### Attack and Fretting
 
 **Style — Off / Finger / Pick / Slap.** One choice, not four switches: in the
 model a style does nothing but replace the Strike Hardness knob with a set
@@ -95,9 +106,11 @@ shorter. A phrase starts on a downstroke, and the count restarts after a pause
 of ~0.4 s — **not** when you release a note, because picking is separate notes
 and resetting on release would make every note a downstroke. Pad G#2.
 
-*The directions are physics; the amounts are judgement, not measurements from a
-real bass. They are all named constants at the top of the Alt Pick block in
-`params.lib` and each is one number.*
+**Pick Depth** scales that separation: 100% is the voicing tuned by ear, 0%
+leaves only the direction flip, 200% doubles it. It deliberately does not touch
+the *direction* — that part is physically true and it is binary, and scaling it
+would put the upstroke's excitation at zero around 50% and drop every other
+note. What scales is the three magnitudes, which were the judgement calls.
 
 **Retrigger** decides what an overlapping note does. Off (the original): a
 second note at the *same* velocity re-pitches the ringing string without

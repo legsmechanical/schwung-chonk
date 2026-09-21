@@ -117,11 +117,23 @@ articulationFrets = button("Articulation_Frets") : ot.smoothParamFast;
 // modest — enough to hear across a line, not enough to sound like two
 // different basses. Retune them here; each is one number.
 pickUp = nentry("Pick_Up", 0, 0, 1, 1);
-pickSign        = 1 - 2 * pickUp;        // downstroke +1, upstroke -1
-pickEnergy      = 1 - 0.18 * pickUp;     // upstroke moves ~18% less string
-pickClickDecay  = 1 - 0.38 * pickUp;     // ... and its click dies sooner
-pickClickHP     = 300 + 240 * pickUp;    // ... with less body
-pickClickLP     = 3750 + 2600 * pickUp;  // ... and more edge
+
+// Pick Depth scales how far apart the two strokes are: 100% is the voicing
+// tuned by ear, 0% leaves only the direction, 200% is twice the separation.
+//
+// ⚠ It deliberately does NOT touch pickSign. The direction flip is the part
+// that is physically true, and it is binary — scaling it as (1 - 2*k*up)
+// would put the upstroke's excitation at ZERO around k = 0.5 and drop every
+// other note. What scales is the three magnitudes, which are the parts that
+// were judgement in the first place.
+pickDepth = hslider("[290]Pick_Depth[group:Bass][export:Pick Depth][unit:%]", 100, 0, 200, 1) / 100;
+pickAmount      = pickDepth * pickUp;    // 0 on any downstroke
+
+pickSign        = 1 - 2 * pickUp;              // downstroke +1, upstroke -1
+pickEnergy      = 1 - 0.18 * pickAmount;       // upstroke moves less string
+pickClickDecay  = max(0.1, 1 - 0.38 * pickAmount);  // ... its click dies sooner
+pickClickHP     = 300 + 240 * pickAmount;      // ... with less body
+pickClickLP     = 3750 + 2600 * pickAmount;    // ... and more edge
 
 
 

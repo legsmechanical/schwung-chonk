@@ -207,6 +207,10 @@ static const param_def_t PARAMS[] = {
     /* Wrapper-side: there is no zone to hold it. What reaches the DSP is
      * Pick_Up, one stroke at a time, from voice_note_on. */
     {"altpick",  "Alt Pick",    NULL,                  K_TOGGLE, 0, 1, 0, NULL, 1},
+    /* How far apart the strokes are: 100 is the voicing tuned by ear, 0 leaves
+     * only the direction flip, 200 doubles the separation. Scales the three
+     * magnitudes, never pickSign — see params.lib. */
+    {"depth",    "Pick Depth",  "Pick_Depth",          K_NUM,    0,   200, 100, "%"},
     /* Wrapper-side: nothing in the DSP to write, it changes how Trigger is
      * driven. See voice_note_on and v2_render_block. */
     {"retrig",   "Retrigger",   NULL,                  K_TOGGLE, 0, 1, 0, NULL, 1},
@@ -508,27 +512,44 @@ static void load_defaults(chonk_t *inst) {
  * ======================================================================== */
 static const char *kUiHierarchy =
 "{\"modes\":null,\"levels\":{"
+ /*
+  * ROOT IS THE STRING PAGE, and the children split BY HAND rather than by
+  * kind. Style, Strike, Mute, Alt Pick and Pick Depth are all the striking
+  * hand; Legato, Glide, Glide Time, Frets and Retrigger are all what happens
+  * between notes. That is how a bass player divides them, and it falls out
+  * 5 and 5.
+  *
+  * Two things this layout fixes:
+  *
+  *  - A separate String level used to hold root's own knob row minus Volume.
+  *    It earned nothing, and one edit from being identical it would have
+  *    rendered EMPTY -- the planner dedupes on a level's whole authored knob
+  *    signature and visits root first.
+  *  - Style and Strike Hardness were on different pages while being the SAME
+  *    control: a style does nothing but replace Strike with a fixed value
+  *    (Finger 0, Pick 50, Slap 100). Split across pages, the knob reads as
+  *    broken. They are adjacent now.
+  *
+  * Saturation and Volume are on root's knob row but live on Output. A level's
+  * knobs need not appear in its own params, so the row can be what you play
+  * while the menu stays the string and four doors.
+  */
  "\"root\":{\"label\":\"CHONK\","
-   /* The browser lives on root, which is what puts it on page one — the host
-    * plans a level's own browser before it walks that level's children. */
    "\"list_param\":\"preset\",\"count_param\":\"preset_count\",\"name_param\":\"preset_name\","
-   "\"knobs\":[\"pickup\",\"bright\",\"strike\",\"thump\",\"tone\",\"sustain\",\"ring\",\"gain\"],"
+   "\"knobs\":[\"pickup\",\"bright\",\"tone\",\"thump\",\"sustain\",\"ring\",\"sat\",\"gain\"],"
    "\"params\":["
-     "\"pickup\",\"bright\",\"strike\",\"thump\",\"tone\",\"sustain\",\"ring\",\"gain\","
-     "{\"level\":\"string\",\"label\":\"String\"},"
-     "{\"level\":\"artic\",\"label\":\"Articulation\"},"
-     "{\"level\":\"eq\",\"label\":\"EQ\"},"
-     "{\"level\":\"mix\",\"label\":\"Mix\"},"
+     "\"pickup\",\"bright\",\"tone\",\"thump\",\"sustain\",\"ring\","
+     "{\"level\":\"attack\",\"label\":\"Attack\"},"
+     "{\"level\":\"fretting\",\"label\":\"Fretting\"},"
+     "{\"level\":\"output\",\"label\":\"Output\"},"
      "{\"level\":\"midi\",\"label\":\"MIDI\"}"
    "]},"
- "\"string\":{\"name\":\"String\",\"knobs\":[\"pickup\",\"bright\",\"strike\",\"thump\",\"tone\",\"sustain\",\"ring\"],"
-   "\"params\":[\"pickup\",\"bright\",\"strike\",\"thump\",\"tone\",\"sustain\",\"ring\"]},"
- "\"artic\":{\"name\":\"Articulation\",\"knobs\":[\"style\",\"mute\",\"legato\",\"glide\",\"glide_ms\",\"frets\",\"altpick\"],"
-   "\"params\":[\"style\",\"mute\",\"legato\",\"glide\",\"glide_ms\",\"frets\",\"altpick\",\"retrig\"]},"
- "\"eq\":{\"name\":\"EQ\",\"knobs\":[\"eq1\",\"eq2\",\"eq3\",\"eq4\",\"eq5\"],"
-   "\"params\":[\"eq1\",\"eq2\",\"eq3\",\"eq4\",\"eq5\"]},"
- "\"mix\":{\"name\":\"Mix\",\"knobs\":[\"gain\",\"pan\",\"sat\"],"
-   "\"params\":[\"gain\",\"pan\",\"sat\"]},"
+ "\"attack\":{\"name\":\"Attack\",\"knobs\":[\"style\",\"strike\",\"mute\",\"altpick\",\"depth\"],"
+   "\"params\":[\"style\",\"strike\",\"mute\",\"altpick\",\"depth\"]},"
+ "\"fretting\":{\"name\":\"Fretting\",\"knobs\":[\"legato\",\"glide\",\"glide_ms\",\"frets\",\"retrig\"],"
+   "\"params\":[\"legato\",\"glide\",\"glide_ms\",\"frets\",\"retrig\"]},"
+ "\"output\":{\"name\":\"Output\",\"knobs\":[\"gain\",\"pan\",\"sat\",\"eq1\",\"eq2\",\"eq3\",\"eq4\",\"eq5\"],"
+   "\"params\":[\"gain\",\"pan\",\"sat\",\"eq1\",\"eq2\",\"eq3\",\"eq4\",\"eq5\"]},"
  "\"midi\":{\"name\":\"MIDI\",\"knobs\":[\"fine\",\"pw_range\",\"at_range\",\"sens\"],"
    "\"params\":[\"fine\",\"pw_range\",\"at_range\",\"sens\"]}"
 "}}";

@@ -29,37 +29,31 @@
         "knobs": [
           "pickup",
           "bright",
-          "strike",
-          "thump",
           "tone",
+          "thump",
           "sustain",
           "ring",
+          "sat",
           "gain"
         ],
         "params": [
           "pickup",
           "bright",
-          "strike",
-          "thump",
           "tone",
+          "thump",
           "sustain",
           "ring",
-          "gain",
           {
-            "level": "string",
-            "label": "String"
+            "level": "attack",
+            "label": "Attack"
           },
           {
-            "level": "artic",
-            "label": "Articulation"
+            "level": "fretting",
+            "label": "Fretting"
           },
           {
-            "level": "eq",
-            "label": "EQ"
-          },
-          {
-            "level": "mix",
-            "label": "Mix"
+            "level": "output",
+            "label": "Output"
           },
           {
             "level": "midi",
@@ -67,52 +61,46 @@
           }
         ]
       },
-      "string": {
-        "name": "String",
+      "attack": {
+        "name": "Attack",
         "knobs": [
-          "pickup",
-          "bright",
+          "style",
           "strike",
-          "thump",
-          "tone",
-          "sustain",
-          "ring"
+          "mute",
+          "altpick",
+          "depth"
         ],
         "params": [
-          "pickup",
-          "bright",
+          "style",
           "strike",
-          "thump",
-          "tone",
-          "sustain",
-          "ring"
+          "mute",
+          "altpick",
+          "depth"
         ]
       },
-      "artic": {
-        "name": "Articulation",
+      "fretting": {
+        "name": "Fretting",
         "knobs": [
-          "style",
-          "mute",
           "legato",
           "glide",
           "glide_ms",
           "frets",
-          "altpick"
+          "retrig"
         ],
         "params": [
-          "style",
-          "mute",
           "legato",
           "glide",
           "glide_ms",
           "frets",
-          "altpick",
           "retrig"
         ]
       },
-      "eq": {
-        "name": "EQ",
+      "output": {
+        "name": "Output",
         "knobs": [
+          "gain",
+          "pan",
+          "sat",
           "eq1",
           "eq2",
           "eq3",
@@ -120,24 +108,14 @@
           "eq5"
         ],
         "params": [
+          "gain",
+          "pan",
+          "sat",
           "eq1",
           "eq2",
           "eq3",
           "eq4",
           "eq5"
-        ]
-      },
-      "mix": {
-        "name": "Mix",
-        "knobs": [
-          "gain",
-          "pan",
-          "sat"
-        ],
-        "params": [
-          "gain",
-          "pan",
-          "sat"
         ]
       },
       "midi": {

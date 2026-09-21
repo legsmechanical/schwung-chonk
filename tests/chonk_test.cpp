@@ -517,30 +517,10 @@ int main(void) {
        cp.find("\"max\":100,\"default\":50,\"unit\":\"%\"") != std::string::npos,
        "percent params carry an explicit max");
 
-    /* Every key named in the hierarchy must be a real param. */
-    size_t pos = 0;
-    int checked = 0;
-    while ((pos = uih.find('"', pos)) != std::string::npos) {
-        size_t end = uih.find('"', pos + 1);
-        if (end == std::string::npos) break;
-        std::string tok = uih.substr(pos + 1, end - pos - 1);
-        pos = end + 1;
-        /* Only the knob/param arrays hold bare keys; skip structural words. */
-        if (tok == "modes" || tok == "levels" || tok == "label" || tok == "name" ||
-            tok == "knobs" || tok == "params" || tok == "level" ||
-            tok == "list_param" || tok == "count_param" || tok == "name_param" ||
-            tok == "preset" || tok == "preset_count" || tok == "preset_name") continue;
-        if (find_param(tok.c_str())) { checked++; continue; }
-        /* level names and their labels are not params */
-        if (uih.find("\"" + tok + "\":{") != std::string::npos) continue;
-        if (tok.find(' ') != std::string::npos || tok == "CHONK" ||
-            tok == "String" || tok == "Articulation" || tok == "EQ" ||
-            tok == "Mix" || tok == "MIDI") continue;
-        printf("  FAIL  ui_hierarchy names unknown key '%s'\n", tok.c_str());
-        g_fail++;
-    }
-    g_checks++;
-    ok(checked > 20, "ui_hierarchy keys all resolve to parameters");
+    /* The hierarchy itself is checked by tests/hierarchy.test.mjs, which reads
+     * the GENERATED module.json and can tell a level link from a param key.
+     * A token scan lived here and had to be taught every level name by hand —
+     * it failed the moment the pages were reorganised, for no defect. */
 
     api->destroy_instance(inst);
 

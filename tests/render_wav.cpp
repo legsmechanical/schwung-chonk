@@ -177,6 +177,17 @@ int main(int argc, char **argv) {
     }
     set("altpick", "0"); set("style", "Off");
 
+    /* 12 — Pick Depth: the same alternating line at three separations. */
+    say("12. alt picking at pick depth 0 / 100 / 200");
+    set("style", "Pick"); set("altpick", "1");
+    const char *depths[] = {"0", "100", "200"};
+    for (int d = 0; d < 3; d++) {
+        set("depth", depths[d]);
+        for (int i = 0; i < 8; i++) play(line[i], 100, 180, 30);
+        render_ms(500);
+    }
+    set("altpick", "0"); set("depth", "100"); set("style", "Off");
+
     double cpu = (double)(clock() - t0) / CLOCKS_PER_SEC;
     double audio = g_pcm.size() / 2.0 / MOVE_SAMPLE_RATE;
     printf("rendered %.1f s of audio in %.2f s  (%.0fx realtime, workstation)\n",

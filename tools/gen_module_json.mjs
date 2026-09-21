@@ -22,8 +22,14 @@ const src = readFileSync(join(repo, "src", "dsp", "chonk_plugin.cpp"), "utf8");
 const m = src.match(/static const char \*kUiHierarchy\s*=\s*([\s\S]*?);\s*\n/);
 if (!m) { console.error("could not find kUiHierarchy in the wrapper"); process.exit(1); }
 
+/* Strip C comments FIRST. The declaration is annotated, and a comment that
+ * happens to quote a level name ("String") would otherwise be pulled in as
+ * part of the JSON — which it was, and the only symptom was a parse error
+ * pointing at a column that meant nothing. */
+const literals = m[1].replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+
 let out = "";
-for (const lit of m[1].matchAll(/"((?:[^"\\]|\\.)*)"/g))
+for (const lit of literals.matchAll(/"((?:[^"\\]|\\.)*)"/g))
   out += lit[1].replace(/\\"/g, '"').replace(/\\\\/g, "\\").replace(/\\n/g, "\n");
 
 let uih;

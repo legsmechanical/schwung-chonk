@@ -103,20 +103,26 @@
       "lines": [
         "1 Pickup Pos",
         "2 Brightness",
-        "3 Strike Hard",
+        "3 Tone",
         "4 Thump",
-        "5 Tone",
-        "6 Sustain",
-        "7 Ring",
+        "5 Sustain",
+        "6 Ring",
+        "7 Saturation",
         "8 Volume",
         "",
-        "Pages: String,",
-        "Articulation, EQ,",
-        "Mix, MIDI."
+        "1-3 shape the tone,",
+        "4 the attack, 5-6 how",
+        "long it holds and how",
+        "it lets go, 7-8 the",
+        "output.",
+        "",
+        "Pages: Attack,",
+        "Fretting, Output,",
+        "MIDI."
       ]
     },
     {
-      "title": "String",
+      "title": "The string",
       "children": [
         {
           "title": "The six knobs",
@@ -191,28 +197,35 @@
       ]
     },
     {
-      "title": "Articulation",
+      "title": "Attack",
       "children": [
         {
-          "title": "Style",
+          "title": "Style and Strike",
           "lines": [
-            "Off, Finger, Pick,",
-            "Slap.",
+            "These two are the",
+            "same control.",
             "",
-            "One choice, not four",
-            "switches: in the",
-            "model a style only",
-            "replaces the Strike",
-            "Hard knob with a set",
-            "value.",
+            "A style does nothing",
+            "but replace Strike",
+            "Hardness with a set",
+            "value:",
             "",
             "Finger 0",
             "Pick   50",
             "Slap   100",
             "Off    the knob",
             "",
-            "So Off with Strike at",
-            "100 IS Slap."
+            "So Strike only does",
+            "anything with Style",
+            "Off - and above",
+            "velocity 108, where",
+            "auto-slap takes over",
+            "anyway.",
+            "",
+            "That is the original's",
+            "design; they sit on",
+            "one page here so it",
+            "is at least visible."
           ]
         },
         {
@@ -228,6 +241,55 @@
             "circuit."
           ]
         },
+        {
+          "title": "Alt Pick",
+          "lines": [
+            "Alternate picking:",
+            "down, up, down, up",
+            "as you play, instead",
+            "of every note being",
+            "a downstroke.",
+            "",
+            "Down and up differ",
+            "three ways. The pick",
+            "pushes the string the",
+            "other way (which is",
+            "what you hear against",
+            "a ringing string),",
+            "the upstroke carries",
+            "a little less energy,",
+            "and its click is",
+            "thinner and shorter.",
+            "",
+            "A phrase starts on a",
+            "downstroke. The count",
+            "restarts after a",
+            "PAUSE of about 0.4 s,",
+            "not when you let a",
+            "note go - picking is",
+            "separate notes, so",
+            "releasing must not",
+            "reset it.",
+            "",
+            "Pad G#2. Not in the",
+            "original - the sizes",
+            "are a guess and can",
+            "be retuned.",
+            "",
+            "Pick Depth sets how",
+            "far apart the strokes",
+            "are: 100% is the",
+            "voicing tuned by ear,",
+            "0% leaves only the",
+            "direction, 200% is",
+            "twice the spread."
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Fretting",
+      "children": [
         {
           "title": "Legato",
           "lines": [
@@ -308,63 +370,28 @@
             "and usually the",
             "better feel."
           ]
-        },
-        {
-          "title": "Alt Pick",
-          "lines": [
-            "Alternate picking:",
-            "down, up, down, up",
-            "as you play, instead",
-            "of every note being",
-            "a downstroke.",
-            "",
-            "Down and up differ",
-            "three ways. The pick",
-            "pushes the string the",
-            "other way (which is",
-            "what you hear against",
-            "a ringing string),",
-            "the upstroke carries",
-            "a little less energy,",
-            "and its click is",
-            "thinner and shorter.",
-            "",
-            "A phrase starts on a",
-            "downstroke. The count",
-            "restarts after a",
-            "PAUSE of about 0.4 s,",
-            "not when you let a",
-            "note go - picking is",
-            "separate notes, so",
-            "releasing must not",
-            "reset it.",
-            "",
-            "Pad G#2. Not in the",
-            "original - the sizes",
-            "are a guess and can",
-            "be retuned."
-          ]
         }
       ]
     },
     {
-      "title": "EQ and Mix",
+      "title": "Output",
       "lines": [
-        "EQ, five bands:",
-        "100 Hz shelf, 250,",
-        "500 and 1.5k peaks,",
-        "3 kHz shelf. +/-12 dB.",
+        "Volume, Pan and",
+        "Saturation, then five",
+        "EQ bands: 100 Hz",
+        "shelf, 250, 500 and",
+        "1.5k peaks, 3 kHz",
+        "shelf. +/-12 dB.",
         "",
         "Saturation drives the",
-        "output. Pan places",
-        "it. Volume is -60 to",
-        "+6 dB.",
+        "output; it is on the",
+        "front knob row too.",
         "",
-        "The original went to",
-        "-100 dB; the bottom",
-        "40 of those are all",
-        "silence, so the knob",
-        "stops at -60."
+        "Volume is -60 to",
+        "+6 dB. The original",
+        "went to -100, but the",
+        "bottom 40 of those",
+        "are all silence."
       ]
     },
     {
