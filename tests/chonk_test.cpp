@@ -243,6 +243,51 @@ int main(void) {
         ok(tail[1] > tail[0] * 2.0f, "Ring 100 leaves the string ringing after release");
     }
 
+    /* ---- Ring's MAPPING, not just its endpoints ----
+     * The endpoints were right under the first mapping too, so the test above
+     * passed while the knob played dead: log-interpolating the efficiency is
+     * linear in the decay RATE, and time is 1/rate, so 90% of the knob bought
+     * 7x the ring and the last tenth bought 47x. What has to hold is that the
+     * knob is roughly GEOMETRIC — each quarter multiplies the ring time by a
+     * similar factor. ---- */
+    {
+        auto ring_time = [&](const char *ring) {
+            void *t = api->create_instance(NULL, NULL);
+            api->set_param(t, "ring", ring);
+            note_on(api, t, 48, 100);
+            int16_t buf[256];
+            float lvl = 0;
+            for (int b = 0; b < 140; b++) {
+                api->render_block(t, buf, 128);
+                if (b > 130)
+                    for (int i = 0; i < 256; i++) {
+                        float v = fabsf(buf[i] / 32768.0f);
+                        if (v > lvl) lvl = v;
+                    }
+            }
+            note_off(api, t, 48);
+            float thresh = lvl * 0.01f;        /* -40 dB */
+            int blocks = 0, quiet = 0;
+            while (blocks < 2000) {
+                float peak = 0;
+                api->render_block(t, buf, 128);
+                for (int i = 0; i < 256; i++) {
+                    float v = fabsf(buf[i] / 32768.0f);
+                    if (v > peak) peak = v;
+                }
+                blocks++;
+                if (peak < thresh) { if (++quiet > 8) break; } else quiet = 0;
+            }
+            api->destroy_instance(t);
+            return blocks * 128.0f / MOVE_SAMPLE_RATE;
+        };
+        float t0 = ring_time("0"), t50 = ring_time("50"), t100 = ring_time("100");
+        printf("        ring time to -40dB: 0 = %.2fs, 50 = %.2fs, 100 = %.2fs\n",
+               t0, t50, t100);
+        ok(t50 > t0 * 3.0f, "Ring at 50 is already several times the minimum");
+        ok(t100 > t50 * 2.0f, "and 100 is several times 50 — the knob is geometric");
+    }
+
     /* ---- Glide and Frets ----
      * Upstream welded both to Legato. These assert the split by RENDERING a
      * note change and comparing the audio: a switch that reaches the DSP

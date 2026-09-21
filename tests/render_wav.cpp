@@ -188,6 +188,17 @@ int main(int argc, char **argv) {
     }
     set("altpick", "0"); set("depth", "100"); set("style", "Off");
 
+    /* 13 — Ring across the knob, after the remap: the steps should sound
+     *      evenly spaced rather than piling up at the top. */
+    say("13. ring 0 / 25 / 50 / 75 / 100, note released after 300 ms");
+    const char *rr[] = {"0", "25", "50", "75", "100"};
+    for (int i = 0; i < 5; i++) {
+        set("ring", rr[i]);
+        midi3(0x90, 48, 100); render_ms(300);
+        midi3(0x80, 48, 0);   render_ms(2200);
+    }
+    set("ring", "0");
+
     double cpu = (double)(clock() - t0) / CLOCKS_PER_SEC;
     double audio = g_pcm.size() / 2.0 / MOVE_SAMPLE_RATE;
     printf("rendered %.1f s of audio in %.2f s  (%.0fx realtime, workstation)\n",

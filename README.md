@@ -178,12 +178,28 @@ and the parameter surface Schwung reads.
 
 **Three changes were made to the DSP**, all marked `SCHWUNG PORT ADDITION`.
 
-The first is the **Ring** release control. Upstream damps the released string to a
-fixed `bounceEfficiencyMuted = 0.5` with no control over it; Ring interpolates
-the release efficiency between that and the open value. The interpolation is
-done on the **log** of the two, because 0.5 and 0.999 are three orders of
-magnitude apart in decay time and a linear knob would do nothing for its first
-80%. At 0 it returns upstream's release to the sample.
+The first is the **Ring** release control. Upstream damps the released string
+to a fixed `bounceEfficiencyMuted = 0.5` with no control over it; Ring
+interpolates the release efficiency between that and the open value, and does
+it **geometrically in the decay rate** — which is linear in the log of the ring
+time, so every step of the knob multiplies the ring by the same ratio.
+
+That mapping took two goes, and the first one is worth recording. Interpolating
+the log of the two *efficiencies* is linear in the **rate**, and ring time is
+`1/rate`, so the time came out a hyperbola: 7× the minimum at 90% of the knob,
+then a 47× jump in the last tenth. Both endpoints were exactly right either
+way, so every test stayed green — it just played dead, which is the only way an
+error in a *mapping* ever shows up. Measured, to -40 dB after release:
+
+| ring | 0 | 10 | 25 | 50 | 75 | 90 | 100 |
+|---|---|---|---|---|---|---|---|
+| before | 0.12 s | 0.15 | 0.15 | 0.21 | 0.39 | 0.85 | **5.80** |
+| after | 0.12 s | 0.18 | 0.33 | 1.04 | 3.36 | 5.80 | 5.80 |
+
+At 0 it returns upstream's release to the sample; at 100 the release stops
+damping entirely, so a released note decays exactly as a held one does. The top
+of the knob flattens because the string's own Sustain is the ceiling — Ring
+decides how much of it you keep, it cannot add more.
 
 The second is **alternate picking**: a `Pick_Up` entry the wrapper writes one
 stroke at a time, driving the excitation's sign, its energy and the transient

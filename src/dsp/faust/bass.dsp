@@ -65,13 +65,25 @@ bass = result with {
     articulationMuteTerm = it.interpolate_linear(articulationMute, 1, it.interpolate_linear(stringFreq01, 0.75, 0.95));
     // ── SCHWUNG PORT ADDITION (not upstream) ──────────────────────────────
     // The released string damps to bounceEfficiencyRelease instead of straight
-    // to bounceEfficiencyMuted. Interpolating the LOG of the two efficiencies
-    // interpolates the decay RATE, so the knob slows the release evenly
-    // instead of doing nothing for its first 80% — efficiency 0.5 and 0.999
-    // are three orders of magnitude apart in decay time. ringTerm = 0 gives
-    // log(muted) back exactly, i.e. upstream's release, so an untouched patch
-    // is unchanged.
-    bounceEfficiencyRelease = exp(it.interpolate_linear(ringTerm, log(bounceEfficiencyMuted), log(bounceEfficiencyOpen*articulationMuteTerm)));
+    // to bounceEfficiencyMuted.
+    //
+    // The knob is GEOMETRIC IN THE DECAY RATE, which is the same as linear in
+    // the LOG OF THE RING TIME: every step multiplies the ring by the same
+    // ratio, so it moves evenly from one end to the other.
+    //
+    // ⚠ This first interpolated the log of the two EFFICIENCIES, which is
+    // linear in the RATE — and ring time is 1/rate, so the time came out a
+    // hyperbola: 7x the minimum at 90% of the knob, then a 47x jump in the
+    // last tenth. Both endpoints measured correctly either way, which is why
+    // the tests were green; it simply played dead. Josh, on the device: "ring
+    // seems to have very little effect until you get very near its max".
+    //
+    // The endpoints are still exact: ringTerm 0 gives bounceEfficiencyMuted,
+    // upstream's release, and ringTerm 1 gives the OPEN efficiency, so a fully
+    // rung note decays exactly as a held one does.
+    ringRateMuted = max(1e-6, 0 - log(bounceEfficiencyMuted));
+    ringRateOpen  = max(1e-6, 0 - log(bounceEfficiencyOpen*articulationMuteTerm));
+    bounceEfficiencyRelease = exp(0 - exp(it.interpolate_linear(ringTerm, log(ringRateMuted), log(ringRateOpen))));
     bounceEfficiency = it.interpolate_linear(ot.input.gate : ot.smoothParamFast, bounceEfficiencyRelease,  bounceEfficiencyOpen*articulationMuteTerm) : ba.line(2/1000*ma.SR);
 
     stringThicknessDamping = stringNote : it.remap(minNote+6, maxNote-6, 0, 1) : max(0) : min(1) : it.interpolate_linear(_, 0.75, 1);

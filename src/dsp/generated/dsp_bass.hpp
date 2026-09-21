@@ -903,7 +903,7 @@ class DSP_Bass : public dsp {
 			float fTemp12 = -32.703197f + 4.4e+02f * fTemp11;
 			fRec28[0] = fSlow23 * fTemp1 + fConst29 * fTemp0 * fRec28[1];
 			float fTemp13 = fSlow11 * (0.9945f + 1.5029548e-05f * fTemp12) * (1.0f + fRec28[0] * (-0.25f + 0.00055664993f * fTemp12));
-			float fTemp14 = std::exp(-0.6931472f + std::max<float>(fSlow7, fRec18[0]) * (0.6931472f + std::log(fTemp13)));
+			float fTemp14 = std::exp(-(std::exp(-0.36651292f + std::max<float>(fSlow7, fRec18[0]) * (0.36651292f + std::log(std::max<float>(1e-06f, -(std::log(fTemp13))))))));
 			fRec29[0] = fSlow24 * fTemp1 + fConst29 * fTemp0 * fRec29[1];
 			float fTemp15 = fTemp14 + fRec29[0] * (fTemp13 - fTemp14);
 			fVec4[0] = fTemp15;
