@@ -3,7 +3,7 @@
   "name": "CHONK",
   "abbrev": "CHNK",
   "version": "0.1.0",
-  "description": "Physically modeled electric bass monosynth, ported from OneTrick CHONK (Punk Labs LLC). Waveguide string with movable pickup, finger/pick/slap articulations, 5-band EQ and saturation. 9 factory presets.",
+  "description": "Physically modeled electric bass monosynth, ported from OneTrick CHONK (Punk Labs LLC). Waveguide string with movable pickup, finger/pick/slap styles, mute, legato, glide, slide and alternate picking. Ring release control, 5-band EQ and saturation. 9 factory presets.",
   "author": "legsmechanical (DSP: Punk Labs LLC)",
   "license": "GPL-3.0-or-later",
   "ui": "ui.js",
