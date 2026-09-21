@@ -147,11 +147,33 @@ int main(void) {
     float pickup_after = c->value[(int)(find_param("pickup") - PARAMS)];
     ok(fabsf(pickup_before - pickup_after) > 0.5f, "loading a preset moves parameters");
 
-    /* Articulation state is performance state: a preset leaves it alone. */
+    /* Upstream's articulation is performance state: a preset leaves it alone.
+     * The switches this port added are part of the patch, so a preset puts
+     * them back to their defaults. */
     api->set_param(inst, "style", "Slap");
+    api->set_param(inst, "mute", "1");
+    api->set_param(inst, "legato", "1");
+    api->set_param(inst, "glide", "1");
+    api->set_param(inst, "frets", "0");
+    api->set_param(inst, "altpick", "1");
+    api->set_param(inst, "retrig", "1");
     api->set_param(inst, "preset", "5");
     ok(get(api, inst, "style") == "3", "a preset does not clear the playing style");
+    ok(get(api, inst, "mute") == "1", "nor Mute");
+    ok(get(api, inst, "legato") == "1", "nor Legato");
+    ok(get(api, inst, "glide") == "0", "a preset resets Glide");
+    ok(get(api, inst, "frets") == "1", "resets Frets to its default of ON");
+    ok(get(api, inst, "altpick") == "0", "resets Alt Pick");
+    ok(get(api, inst, "retrig") == "0", "resets Retrigger");
+    /* The port's continuous additions ride the preset like any other value. */
+    api->set_param(inst, "glide_ms", "300");
+    api->set_param(inst, "ring", "80");
+    api->set_param(inst, "preset", "2");
+    ok(get(api, inst, "glide_ms") == "35.000", "and Glide Time goes back to 35 ms");
+    ok(get(api, inst, "ring") == "0.000", "and Ring back to 0");
     api->set_param(inst, "style", "Off");
+    api->set_param(inst, "mute", "0");
+    api->set_param(inst, "legato", "0");
 
     /* ---- Style is ONE choice: the three Faust buttons are mutually exclusive.
      * params.lib folds them with max(), so two at once is a state the model

@@ -140,6 +140,12 @@ typedef struct {
     ParamKind   kind;
     float       min, max, def;
     const char *unit;     /* "%", "dB", "st", "cents", or NULL   */
+    /* Switches a PRESET should put back to their default. Upstream's own
+     * articulation (style, mute, legato) is left alone — that is how you are
+     * playing, not what the patch is — but this port's switches are part of
+     * the sound, so a preset owns them. Appended, because
+     * tools/gen_factory_bank.mjs parses this table up to `def`. */
+    int         reset_on_preset;
 } param_def_t;
 
 /* Order is the order the state blob is written in; it is not the UI order
@@ -191,19 +197,19 @@ static const param_def_t PARAMS[] = {
      * Legato alone sounds as it always has; Glide adds the slide while KEEPING
      * the click. Frets defaults ON, which is upstream's behaviour for every
      * case that existed before the switch. */
-    {"glide",    "Glide",       "Articulation_Glide",  K_TOGGLE, 0, 1, 0, NULL},
+    {"glide",    "Glide",       "Articulation_Glide",  K_TOGGLE, 0, 1, 0, NULL, 1},
     /* Upstream's glide was a hard-coded 35 ms T60; that is the default here,
      * so an untouched patch glides as it always did. Higher = slower. The DSP
      * multiplies this by glideTerm, so with Glide and Legato both off the
      * pitch jumps whatever this says. */
     {"glide_ms", "Glide Time",  "Glide_Time",          K_NUM,    0,   500,  35, "ms"},
-    {"frets",    "Frets",       "Articulation_Frets",  K_TOGGLE, 0, 1, 1, NULL},
+    {"frets",    "Frets",       "Articulation_Frets",  K_TOGGLE, 0, 1, 1, NULL, 1},
     /* Wrapper-side: there is no zone to hold it. What reaches the DSP is
      * Pick_Up, one stroke at a time, from voice_note_on. */
-    {"altpick",  "Alt Pick",    NULL,                  K_TOGGLE, 0, 1, 0, NULL},
+    {"altpick",  "Alt Pick",    NULL,                  K_TOGGLE, 0, 1, 0, NULL, 1},
     /* Wrapper-side: nothing in the DSP to write, it changes how Trigger is
      * driven. See voice_note_on and v2_render_block. */
-    {"retrig",   "Retrigger",   NULL,                  K_TOGGLE, 0, 1, 0, NULL},
+    {"retrig",   "Retrigger",   NULL,                  K_TOGGLE, 0, 1, 0, NULL, 1},
 };
 #define CHONK_PARAM_COUNT ((int)(sizeof(PARAMS) / sizeof(PARAMS[0])))
 
@@ -478,10 +484,15 @@ static int preset_count(void) { return CHONK_FACTORY_COUNT; }
 static void load_preset(chonk_t *inst, int idx) {
     if (idx < 0 || idx >= CHONK_FACTORY_COUNT) return;
     const chonk_preset_t *pr = &CHONK_FACTORY[idx];
-    /* A preset carries the Bass/Mix/EQ/MIDI surface only; the articulation
-     * latches are performance state and are left where the player put them. */
+    /* A preset carries the Bass/Mix/EQ/MIDI surface. Upstream's articulation
+     * (style, mute, legato) is performance state and is left where the player
+     * put it; the switches this port added are part of the patch, so a preset
+     * puts them back to their defaults — see reset_on_preset. */
     for (int i = 0; i < CHONK_PARAM_COUNT; i++) {
-        if (PARAMS[i].kind == K_TOGGLE || PARAMS[i].kind == K_STYLE) continue;
+        if (PARAMS[i].kind == K_TOGGLE || PARAMS[i].kind == K_STYLE) {
+            if (PARAMS[i].reset_on_preset) set_value(inst, i, PARAMS[i].def);
+            continue;
+        }
         set_value(inst, i, pr->value[i]);
     }
     inst->cur_preset = idx;

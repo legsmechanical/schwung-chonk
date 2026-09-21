@@ -413,11 +413,18 @@
         "",
         "They set the string,",
         "EQ, Mix and MIDI",
-        "pages. Articulation",
-        "is left alone - it is",
-        "how you are playing,",
-        "not what the patch",
-        "is."
+        "pages, and reset the",
+        "switches added by",
+        "this port: Glide,",
+        "Glide Time, Frets,",
+        "Ring, Alt Pick,",
+        "Retrigger.",
+        "",
+        "Style, Mute and",
+        "Legato are left",
+        "alone - they are how",
+        "you are playing, not",
+        "what the patch is."
       ]
     },
     {

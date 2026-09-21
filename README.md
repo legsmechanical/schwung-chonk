@@ -90,7 +90,7 @@ does nothing at all, because the DSP multiplies it by `glideTerm`.
 **Alt Pick** plays the line down, up, down, up instead of every note being a
 downstroke. Three things separate the two strokes: the pick pushes the string
 the other way (the part you hear against a string that is still ringing), the
-upstroke carries about 12% less energy, and its click is thinner, brighter and
+upstroke carries about 18% less energy, and its click is thinner, brighter and
 shorter. A phrase starts on a downstroke, and the count restarts after a pause
 of ~0.4 s — **not** when you release a note, because picking is separate notes
 and resetting on release would make every note a downstroke. Pad G#2.
@@ -120,8 +120,10 @@ CC 68 legato · CC 120/123 all notes off.
 
 Nine, from Punk Labs: **J-Bass, Defender, Demonster, Disco, Flatworm,
 Gargantuan, Justice, New Strings, Sitcom.** They set the String, EQ, Mix and
-MIDI pages; articulation is left alone, because it is how you are playing
-rather than what the patch is.
+MIDI pages, and reset the switches this port added — Glide, Glide Time, Frets,
+Ring, Alt Pick, Retrigger — because those are part of the sound. Upstream's own
+articulation (Style, Mute, Legato) is left alone, because that is how you are
+playing rather than what the patch is.
 
 On-device help covers all of the above (Shift+Vol+Menu → Help → Modules).
 
