@@ -372,7 +372,9 @@ static int altpick_on(const chonk_t *inst) {
  * — press, release, press — so resetting on release, which is what this did
  * first, made every note a downstroke and alternation did nothing at all
  * except under a held legato line. The demo render is what caught it. */
-#define kAltPickResetMs 400
+/* How much SILENCE reads as a new phrase. A second is long enough that no
+ * groove crosses it and short enough that a deliberate stop does. */
+#define kAltPickResetMs 1000
 
 static void advance_pick(chonk_t *inst) {
     inst->idle_frames = 0;
@@ -899,12 +901,21 @@ static void v2_render_block(void *instance, int16_t *out_lr, int frames) {
     const int kMax = (int)(sizeof(inst->mono) / sizeof(inst->mono[0]));
     int done = 0;
 
-    /* A pause long enough to be a new phrase puts the pick back on a
-     * downstroke. Counted in rendered frames, so it is wall-clock and does not
-     * depend on how the host blocks its callbacks. */
+    /* A REST long enough to be a new phrase puts the pick back on a downstroke.
+     *
+     * ⚠ "Rest" means nothing is sounding — not "a gap since the last attack",
+     * which is what this counted first. Measured from the last note-ON, a
+     * quarter note at 120 bpm is a 500 ms gap, so every note reset and a line
+     * slower than eighths at 120 came out all downstrokes; a note held longer
+     * than the threshold reset itself mid-ring. The clock only runs while the
+     * player is not playing. */
     int sr = (g_host && g_host->sample_rate > 0) ? g_host->sample_rate : MOVE_SAMPLE_RATE;
-    if (inst->idle_frames < sr) inst->idle_frames += frames;
-    if (inst->idle_frames >= sr * kAltPickResetMs / 1000) inst->next_up = 0;
+    if (inst->held_count > 0) {
+        inst->idle_frames = 0;
+    } else {
+        if (inst->idle_frames < sr * 4) inst->idle_frames += frames;
+        if (inst->idle_frames >= sr * kAltPickResetMs / 1000) inst->next_up = 0;
+    }
 
     /* A forced retrigger: render exactly one frame with Trigger still at 0,
      * then raise it, so the next frame is a rising edge the DSP can see. */

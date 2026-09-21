@@ -102,9 +102,12 @@ does nothing at all, because the DSP multiplies it by `glideTerm`.
 downstroke. Three things separate the two strokes: the pick pushes the string
 the other way (the part you hear against a string that is still ringing), the
 upstroke carries about 18% less energy, and its click is thinner, brighter and
-shorter. A phrase starts on a downstroke, and the count restarts after a pause
-of ~0.4 s — **not** when you release a note, because picking is separate notes
-and resetting on release would make every note a downstroke. Pad G#2.
+shorter. A phrase starts on a downstroke, and the count restarts after a **rest** of
+~1 s — time with nothing sounding. Not on release (picking is separate notes,
+so that would make every note a downstroke), and not on a gap between attacks
+either: measured that way, a quarter note at 120 bpm is a 500 ms gap, so
+anything slower than eighths came out all downstrokes and a held note reset
+itself mid-ring. Pad G#2.
 
 **Pick Depth** scales that separation: 100% is the voicing tuned by ear, 0%
 leaves only the direction flip, 200% doubles it. It deliberately does not touch

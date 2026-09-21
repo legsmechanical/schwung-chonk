@@ -447,6 +447,35 @@ int main(void) {
         render_peak(api, inst, 120);
         note_on(api, inst, 50, 100);
         ok(zp && *zp == 1.0f, "a short gap between notes keeps alternating");
+
+        /* A quarter note at 120 bpm is a 500 ms gap between attacks. Measured
+         * from the last NOTE-ON, as this did first, that reset every note and
+         * anything slower than eighths came out all downstrokes. The clock
+         * only runs while nothing is sounding. */
+        api->set_param(inst, "all_notes_off", "1");
+        {
+            int strokes[6];
+            for (int i = 0; i < 6; i++) {
+                note_on(api, inst, 48, 100);
+                strokes[i] = (zp && *zp > 0.5f);
+                render_peak(api, inst, 120);
+                note_off(api, inst, 48);
+                render_peak(api, inst, 380);      /* 500 ms apart in total */
+            }
+            int alternating = 1;
+            for (int i = 0; i < 6; i++) if (strokes[i] != (i & 1)) alternating = 0;
+            ok(alternating, "quarter notes at 120 bpm still alternate");
+        }
+
+        /* A note held longer than the reset must not reset the cycle either —
+         * the player has not stopped, they are holding a note. */
+        api->set_param(inst, "all_notes_off", "1");
+        note_on(api, inst, 48, 100);
+        render_peak(api, inst, kAltPickResetMs + 500);
+        note_off(api, inst, 48);
+        note_on(api, inst, 50, 100);
+        ok(zp && *zp == 1.0f, "a long held note does not reset the alternation");
+        api->set_param(inst, "all_notes_off", "1");
         api->set_param(inst, "all_notes_off", "1");
 
         /* The pad inverts the latch, like every other articulation pad. */
