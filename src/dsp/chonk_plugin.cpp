@@ -903,12 +903,16 @@ static void v2_render_block(void *instance, int16_t *out_lr, int frames) {
 
     /* A REST long enough to be a new phrase puts the pick back on a downstroke.
      *
-     * ⚠ "Rest" means nothing is sounding — not "a gap since the last attack",
-     * which is what this counted first. Measured from the last note-ON, a
-     * quarter note at 120 bpm is a 500 ms gap, so every note reset and a line
-     * slower than eighths at 120 came out all downstrokes; a note held longer
-     * than the threshold reset itself mid-ring. The clock only runs while the
-     * player is not playing. */
+     * "Rest" here means NOTHING IS HELD — hands off the pads — not silence.
+     * The string can still be ringing for seconds with Ring up, and the clock
+     * runs anyway, because that is a rest as a player means it. A held note is
+     * never a rest at any length, and neither is a sustain pedal holding notes
+     * (releases go to the sustained list without dropping held_count, so this
+     * gets that for free).
+     *
+     * ⚠ It first counted from the last note-ON. A quarter note at 120 bpm is a
+     * 500 ms gap, so every note reset and anything slower than eighths came out
+     * all downstrokes; a note held past the threshold reset itself mid-ring. */
     int sr = (g_host && g_host->sample_rate > 0) ? g_host->sample_rate : MOVE_SAMPLE_RATE;
     if (inst->held_count > 0) {
         inst->idle_frames = 0;

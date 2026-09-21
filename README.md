@@ -103,7 +103,9 @@ downstroke. Three things separate the two strokes: the pick pushes the string
 the other way (the part you hear against a string that is still ringing), the
 upstroke carries about 18% less energy, and its click is thinner, brighter and
 shorter. A phrase starts on a downstroke, and the count restarts after a **rest** of
-~1 s — time with nothing sounding. Not on release (picking is separate notes,
+~1 s — time with nothing *held*. The string may still be ringing; hands off
+the pads is the rest. A held note is never a rest at any length, and neither
+is a sustain pedal holding notes. Not on release (picking is separate notes,
 so that would make every note a downstroke), and not on a gap between attacks
 either: measured that way, a quarter note at 120 bpm is a 500 ms gap, so
 anything slower than eighths came out all downstrokes and a held note reset
